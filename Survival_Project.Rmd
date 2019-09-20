@@ -1,0 +1,69 @@
+---
+title: "My_Titanic"
+author: "Clement Mugenzi"
+date: "9/20/2019"
+output: pdf_document
+---
+
+This dataset will be comprised of two separate .csv files, both of which will be combined then used to predict who survives on the titanic.
+But first, let's load all packages that I will be using in this project.
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggthemes)
+library(scales)
+library(mice)
+library(randomForest)
+```
+
+
+# Import the Dataset
+
+```{r, results='asis', include=TRUE}
+# First, we will load the train dataset.
+train = read_csv("train.csv")
+# Second, the test dataset is loaded
+test = read_csv("test.csv")
+# Then both the train and test datasets are combined into a single dataset.
+full = bind_rows(train, test)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
