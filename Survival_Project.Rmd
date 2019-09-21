@@ -2,13 +2,13 @@
 title: "My_Titanic"
 author: "Clement Mugenzi"
 date: "9/20/2019"
-output: pdf_document
+output: github_document
 ---
 
 This dataset will be comprised of two separate .csv files, both of which will be combined then used to predict who survives on the titanic.
 But first, let's load all packages that I will be using in this project.
 
-```{r setup, include=FALSE}
+```{r setup, include=F}
 library(tidyverse)
 library(ggthemes)
 library(scales)
@@ -19,7 +19,7 @@ library(randomForest)
 
 # Import the Dataset
 
-```{r, results='asis', include=TRUE}
+```{r, results='asis', include=T}
 # First, we will load the train dataset.
 train = read_csv("train.csv")
 # Second, the test dataset is loaded
@@ -28,7 +28,27 @@ test = read_csv("test.csv")
 full = bind_rows(train, test)
 ```
 
+# Feature Engineering
 
+```{r, include=TRUE}
+# Grab title from passenger's name.
+full$Title <- gsub('(.*,) | (\\..*)', '', full$Name)
+# Show title counts by sex
+table(pull(full, Sex), pull(full, Title))
+```
+
+Titles with very low cell counts to be combined to "rare" level in the chunk below.
+
+```{r, include=TRUE}
+rare_title <- c("Dona", "Lady", "the Countess",
+                "Capt", "Col", "Don", "Dr",
+                "Major", "Rev", "Sir", "Jonkheer")
+# Also reassign mlle, ms, and mme accordingly
+full$Title[full$Title == "Mlle"] = "Miss"
+full$Title[full$Title == "Ms"] = "Miss"
+full$Title[full$Title == "Mme"] = "Mrs"
+full$Title[full$Title %in% rare_title] = "rare_title"
+```
 
 
 
