@@ -1,12 +1,9 @@
 ---
-title: "My_Titanic"
+title: "Titanic Project"
 author: "Clement Mugenzi"
 date: "9/20/2019"
 output: github_document
 ---
-
-This dataset will be comprised of two separate .csv files, both of which will be combined then used to predict who survives on the titanic.
-But first, let's load all packages that I will be using in this project.
 
 ```{r setup, include=F}
 library(tidyverse)
@@ -14,70 +11,91 @@ library(ggthemes)
 library(scales)
 library(mice)
 library(randomForest)
+library(viridis)
+library(readxl)
+library(readr)
+library(patchwork)
+knitr::opts_chunk$set(
+	echo = TRUE,
+	warning = FALSE,
+	fig.width = 8, 
+  fig.height = 6,
+  out.width = "90%"
+)
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
 ```
 
 
-# Import the Dataset
+
+# Introduction
+
+This titanic project is based on the infamous sinking of Titanic in 1912, a tragedy that led to 1,502 people dying out of 2,224 passengers. Datasets provided include the train dataset with 891 passengers whose survival fate is known and a test dataset with 418 passengers whose survival fate is unknown. I will first start by loading both datasets then combine them to do some feature engineering (data cleaning and data manipulation).
+
+## Loading the Dataset
 
 ```{r, results='asis', include=T}
 # First, we will load the train dataset.
-train = read_csv("train.csv")
+train = 
+  read_csv("Data/train.csv") %>% 
+  janitor::clean_names() 
 # Second, the test dataset is loaded
-test = read_csv("test.csv")
+test = 
+  read_csv("Data/test.csv") %>% 
+  janitor::clean_names()
 # Then both the train and test datasets are combined into a single dataset.
-full = bind_rows(train, test)
+Titanic = 
+  bind_rows(train, test) %>% 
+  rename(gender = "sex") %>% view()
 ```
 
-# Feature Engineering
+After loading and combining both datasets, it is better to highlight what kind of dataset I will be working with. A glimpse of the dataset is in the next code chunk.
 
-```{r, include=F}
-# Grab title from passenger's name.
-full$Title <- gsub('(.*,) | (\\..*)', '', full$Name)
-# Show title counts by sex
-table(pull(full, Sex), pull(full, Title))
+```{r}
+glimpse(Titanic)
 ```
 
-Titles with very low cell counts to be combined to "rare" level in the chunk below.
+Some of the variables important to highlight include name, passengerID, gender, age, and each individual's survival status. 
 
-```{r, include=T}
-rare_title <- c("Dona", "Lady", "the Countess",
-                "Capt", "Col", "Don", "Dr",
-                "Major", "Rev", "Sir", "Jonkheer")
-# Also reassign mlle, ms, and mme accordingly
-full$Title[full$Title == "Mlle"] = "Miss"
-full$Title[full$Title == "Ms"] = "Miss"
-full$Title[full$Title == "Mme"] = "Mrs"
-full$Title[full$Title %in% rare_title] = "rare_title"
-```
-Show title counts by sex again
-```{r, include=F}
-# Show title counts by sex again
-table(full$Sex, full$Title)
-full$Surname <- sapply(full$Name,function(x) strsplit(x, split = '[,.]')[[1]][1])
-cat(paste('We have <b>', nlevels(factor(full$Surname))))
-## Do families sink or swim together?
-# Create a family size variabke including the passenger themselves
-full$fsize <- full$SibSp + full$Parch + 1
-# Create a family variable
-full$family <- paste(full$Surname, full$fsize, sep = '_')
-```
+## Summary of missing values 
 
-# Visualization
+The code chunk below summarises how many missing values we have per column.
 
-```{r, include=TRUE}
-# Use ggplot2 to visualize the relationship between family size and survival
-ggplot(full[1:891,], aes(x = fsize, fill = factor(Survived))) +
-  geom_bar(star = 'Count', position = 'dodge') + scale_x_continuous(breaks = c(1:11)) + labs(x ='Family Size') + theme_few()
+```{r}
+  Titanic %>%
+    gather(key = "key", value = "val") %>%
+    mutate(is.missing = is.na(val)) %>%
+    group_by(key, is.missing) %>%
+    summarise(num.missing = n()) %>%
+    filter(is.missing == T) %>%
+    select(-is.missing) %>%
+    arrange(desc(num.missing)) %>%
+    rename("Missing Values" = "num.missing", "Variable" = "key") %>% 
+  knitr::kable()
 ```
 
 
-```{r, include=TRUE}
-# Let's Discretize family size
-full$fsizeD[full$fsize == 1] <- 'Singleton'
-full$fsizeD[full$fsize < 5 & full$fsize > 1] <- 'Small'
-full$fsizeD[full$fsize > 4] <- 'Large'
-# Show family size by survival using mosaic plot
-mosaicplot(table(full$fsizeD, full$Survived), main = 'Family size by survival', shade = T)
+This is a dirty dataset and we either need to drop the rows with NaN values or fill in the gaps by leveraging the data in the dataset to estimate what those values could have been. We will choose the latter and try to estimate those values and fill in the gaps rather than lose observations.
+
+## Cleaning Names
+
+With the following code chunk, I will extract the name title such as "Mr." or "Miss." everywhere such titles occurs within the name variable.
+
+```{r}
+Titanic %>%
+  mutate(
+    name = str_replace(name, "Mr.", ""),
+    name = str_replace(name, "Mrs.", ""),
+    name = str_replace(name, "Miss", ""),
+    name = str_replace(name, "miss", ""),
+    name = str_replace(name, "Master", ""),
+    name = str_replace(name, ",.", ","),
+    name = str_replace(name, ".,", "")) %>% view()
 ```
 
 
