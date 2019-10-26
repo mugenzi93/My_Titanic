@@ -35,7 +35,7 @@ theme_set(theme_minimal() + theme(legend.position = "bottom"))
 
 # Introduction
 
-This titanic project is based on the infamous sinking of Titanic in 1912, a tragedy that led to 1,502 people dying out of 2,224 passengers. Datasets provided include the train dataset with 891 passengers whose survival fate is known and a test dataset with 418 passengers whose survival fate is unknown. I will first start by loading both datasets then combine them to do some feature engineering (data cleaning and data manipulation).
+This titanic project is based on the infamous sinking of Titanic in 1912, a tragedy that led to 1,502 people dying out of 2,224 passengers. Datasets provided include the train dataset with 891 passengers whose survival fate is known and a test dataset with 418 passengers whose survival fate is unknown. I will first start by loading both datasets then combine them to do some feature engineering (data cleaning and data manipulation) then use machine learning tools to predict what the survival fate for the passengers in the test dataset would have been.
 
 ## Loading the Dataset
 
@@ -62,6 +62,8 @@ glimpse(Titanic)
 
 Some of the variables important to highlight include name, passengerID, gender, age, and each individual's survival status. 
 
+# Feature Engineering
+
 ## Summary of missing values 
 
 The code chunk below summarises how many missing values we have per column.
@@ -79,26 +81,61 @@ The code chunk below summarises how many missing values we have per column.
   knitr::kable()
 ```
 
+## Defining factor variables
+
+The code chunk below converts appropriate variables to factor variables.
+
+
+```{r}
+titanic =
+  Titanic %>% 
+  mutate(
+    survived = recode(survived, "0" = "Died", "1" = "Survived"),
+    embarked = recode(embarked, "C" = "Cherbourg", "S" = "Southampton",
+                      "Q" = "Queenstown"),
+    pclass = recode(pclass, "1" = "1st", "2" = "2nd", "3" = "3rd"),
+    gender = factor(gender, levels = c("male", "female")),
+    survived = factor(survived, levels = c("Died", "Survived")),
+    embarked = factor(embarked, levels = c("Cherbourg", "Southampton",
+                                           "Queenstown")),
+    pclass = factor(pclass, levels = c("1st", "2nd", "3rd")))
+```
+
 
 This is a dirty dataset and we either need to drop the rows with NaN values or fill in the gaps by leveraging the data in the dataset to estimate what those values could have been. We will choose the latter and try to estimate those values and fill in the gaps rather than lose observations.
 
 ## Cleaning Names
 
-With the following code chunk, I will extract the name title such as "Mr." or "Miss." everywhere such titles occurs within the name variable.
 
 ```{r}
-Titanic %>%
+titanic %>% 
   mutate(
-    name = str_replace(name, "Mr.", ""),
-    name = str_replace(name, "Mrs.", ""),
-    name = str_replace(name, "Miss", ""),
-    name = str_replace(name, "miss", ""),
-    name = str_replace(name, "Master", ""),
-    name = str_replace(name, ",.", ","),
-    name = str_replace(name, ".,", "")) %>% view()
+    name = str_replace(name, '(.*, )|(\\..*)', ''))
+  
+  
+```
+
+With the following code chunk, we will determine what different name titles we have and their distribution according to gender.
+
+```{r}
+# I will extract titles from the name variable
+Titanic$titles = gsub('(.*, )|(\\..*)', '', Titanic$name)
+table(Titanic$gender, Titanic$titles)
+
 ```
 
 
+
+
+
+Last names can help us identify passengers according to which families they come from. Therefore, I will be cleaning the name variable by removing different name titles such as "Mr"and "Mrs" that are built in this name vector already. Also, the name variable seem to have "rare" titles, so I will be replacing those with something ubiquitous.
+
+
+
+
+With the following code chunk, I will extract the name title such as "Mr." or "Miss." everywhere such titles occurs within the name variable.
+
+we see that we have 18 different titles but we will want to normalize these a bit so that we can generalize a bit more.
 
 
 
