@@ -138,7 +138,7 @@ titanic =
     survived = factor(survived, levels = c("Died", "Survived")),
     embarked = factor(embarked, levels = c("Cherbourg", "Southampton",
                                            "Queenstown")),
-    pclass = factor(pclass, levels = c("1st", "2nd", "3rd")))
+    pclass = factor(pclass, levels = c("1st", "2nd", "3rd"))) %>% view()
 ```
 
 This is a dirty dataset and we either need to drop the rows with NaN
@@ -149,55 +149,58 @@ observations.
 
 ## Cleaning Names
 
-``` r
-titanic %>% 
-  mutate(
-    name = str_replace(name, '(.*, )|(\\..*)', ''))
-```
-
-    ## # A tibble: 1,309 x 12
-    ##    passenger_id survived pclass name  gender   age sib_sp parch ticket
-    ##           <dbl> <fct>    <fct>  <chr> <fct>  <dbl>  <dbl> <dbl> <chr> 
-    ##  1            1 Died     3rd    Mr. … male      22      1     0 A/5 2…
-    ##  2            2 Survived 1st    Mrs.… female    38      1     0 PC 17…
-    ##  3            3 Survived 3rd    Miss… female    26      0     0 STON/…
-    ##  4            4 Survived 1st    Mrs.… female    35      1     0 113803
-    ##  5            5 Died     3rd    Mr. … male      35      0     0 373450
-    ##  6            6 Died     3rd    Mr. … male      NA      0     0 330877
-    ##  7            7 Died     1st    Mr. … male      54      0     0 17463 
-    ##  8            8 Died     3rd    Mast… male       2      3     1 349909
-    ##  9            9 Survived 3rd    Mrs.… female    27      0     2 347742
-    ## 10           10 Survived 2nd    Mrs.… female    14      1     0 237736
-    ## # … with 1,299 more rows, and 3 more variables: fare <dbl>, cabin <chr>,
-    ## #   embarked <fct>
-
 With the following code chunk, we will determine what different name
 titles we have and their distribution according to gender.
 
 ``` r
 # I will extract titles from the name variable
-Titanic$titles = gsub('(.*, )|(\\..*)', '', Titanic$name)
-table(Titanic$gender, Titanic$titles)
+titanic$titles = gsub('(.*, )|(\\..*)', '', titanic$name)
+table(titanic$gender, titanic$titles) %>% 
+  knitr::kable()
 ```
 
-    ##         
-    ##          Capt Col Don Dona  Dr Jonkheer Lady Major Master Miss Mlle Mme
-    ##   female    0   0   0    1   1        0    1     0      0  260    2   1
-    ##   male      1   4   1    0   7        1    0     2     61    0    0   0
-    ##         
-    ##           Mr Mrs  Ms Rev Sir the Countess
-    ##   female   0 197   2   0   0            1
-    ##   male   757   0   0   8   1            0
+|        | Capt | Col | Don | Dona | Dr | Jonkheer | Lady | Major | Master | Miss | Mlle | Mme |  Mr | Mrs | Ms | Rev | Sir | the Countess |
+| ------ | ---: | --: | --: | ---: | -: | -------: | ---: | ----: | -----: | ---: | ---: | --: | --: | --: | -: | --: | --: | -----------: |
+| male   |    1 |   4 |   1 |    0 |  7 |        1 |    0 |     2 |     61 |    0 |    0 |   0 | 757 |   0 |  0 |   8 |   1 |            0 |
+| female |    0 |   0 |   0 |    1 |  1 |        0 |    1 |     0 |      0 |  260 |    2 |   1 |   0 | 197 |  2 |   0 |   0 |            1 |
 
-Last names can help us identify passengers according to which families
-they come from. Therefore, I will be cleaning the name variable by
-removing different name titles such as “Mr”and “Mrs” that are built in
-this name vector already. Also, the name variable seem to have “rare”
-titles, so I will be replacing those with something ubiquitous.
+Let’s now define all these different name titles as rare titles (for
+those titles which are really rare).
 
-With the following code chunk, I will extract the name title such as
-“Mr.” or “Miss.” everywhere such titles occurs within the name
-variable.
+``` r
+# Titles with very low cell counts to be combined to "rare" level
+rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
+                'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
 
-we see that we have 18 different titles but we will want to normalize
-these a bit so that we can generalize a bit more.
+
+# Also reassign mlle, ms, and mme accordingly
+  titanic %>%
+  mutate(
+    titles = gsub('(.*, )|(\\..*)', '', titanic$name),
+    titles = str_replace(titles, "Mlle", "Miss"),
+    titles = str_replace(titles, "Ms", "Miss"),
+    titles = str_replace(titles, "Mme", "Mrs"),
+    titles = recode(titles, "Dona" = "Rare Title", "Lady" = "Rare Title",
+                   "the Countess" = "Rare Title", "Capt" = "Rare Title",
+                   "Col" = "Rare Title", "Don" = "Rare Title",
+                   "Dr" = "Rare Title", "Major" = "Rare Title",
+                   "Rev" = "Rare Title", "Sir" = "Rare Title",
+                   "Jonkheer" = "Rare Title")) %>% 
+  group_by(titles, gender) %>% 
+  summarise(
+    Frequency = n()) %>% 
+  pivot_wider(
+    names_from = titles,
+    values_from = Frequency) %>%
+  mutate(
+    Master = replace_na(Master, 0),
+    Miss = replace_na(Miss, 0),
+    Mr = replace_na(Mr, 0),
+    Mrs = replace_na(Mrs, 0)) %>% 
+  knitr::kable()
+```
+
+| gender | Master | Miss |  Mr | Mrs | Rare Title |
+| :----- | -----: | ---: | --: | --: | ---------: |
+| male   |     61 |    0 | 757 |   0 |         25 |
+| female |      0 |  264 |   0 | 198 |          4 |

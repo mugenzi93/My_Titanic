@@ -98,7 +98,7 @@ titanic =
     survived = factor(survived, levels = c("Died", "Survived")),
     embarked = factor(embarked, levels = c("Cherbourg", "Southampton",
                                            "Queenstown")),
-    pclass = factor(pclass, levels = c("1st", "2nd", "3rd")))
+    pclass = factor(pclass, levels = c("1st", "2nd", "3rd"))) %>% view()
 ```
 
 
@@ -106,36 +106,51 @@ This is a dirty dataset and we either need to drop the rows with NaN values or f
 
 ## Cleaning Names
 
-
-```{r}
-titanic %>% 
-  mutate(
-    name = str_replace(name, '(.*, )|(\\..*)', ''))
-  
-  
-```
-
 With the following code chunk, we will determine what different name titles we have and their distribution according to gender.
 
 ```{r}
 # I will extract titles from the name variable
-Titanic$titles = gsub('(.*, )|(\\..*)', '', Titanic$name)
-table(Titanic$gender, Titanic$titles)
-
+titanic$titles = gsub('(.*, )|(\\..*)', '', titanic$name)
+table(titanic$gender, titanic$titles) %>% 
+  knitr::kable()
 ```
 
+Let's now define all these different name titles as rare titles (for those titles which are really rare).
 
 
+```{r}
+# Titles with very low cell counts to be combined to "rare" level
+rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
+                'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
 
 
-Last names can help us identify passengers according to which families they come from. Therefore, I will be cleaning the name variable by removing different name titles such as "Mr"and "Mrs" that are built in this name vector already. Also, the name variable seem to have "rare" titles, so I will be replacing those with something ubiquitous.
+# Also reassign mlle, ms, and mme accordingly
+  titanic %>%
+  mutate(
+    titles = gsub('(.*, )|(\\..*)', '', titanic$name),
+    titles = str_replace(titles, "Mlle", "Miss"),
+    titles = str_replace(titles, "Ms", "Miss"),
+    titles = str_replace(titles, "Mme", "Mrs"),
+    titles = recode(titles, "Dona" = "Rare Title", "Lady" = "Rare Title",
+                   "the Countess" = "Rare Title", "Capt" = "Rare Title",
+                   "Col" = "Rare Title", "Don" = "Rare Title",
+                   "Dr" = "Rare Title", "Major" = "Rare Title",
+                   "Rev" = "Rare Title", "Sir" = "Rare Title",
+                   "Jonkheer" = "Rare Title")) %>% 
+  group_by(titles, gender) %>% 
+  summarise(
+    Frequency = n()) %>% 
+  pivot_wider(
+    names_from = titles,
+    values_from = Frequency) %>%
+  mutate(
+    Master = replace_na(Master, 0),
+    Miss = replace_na(Miss, 0),
+    Mr = replace_na(Mr, 0),
+    Mrs = replace_na(Mrs, 0)) %>% 
+  knitr::kable()
+```
 
-
-
-
-With the following code chunk, I will extract the name title such as "Mr." or "Miss." everywhere such titles occurs within the name variable.
-
-we see that we have 18 different titles but we will want to normalize these a bit so that we can generalize a bit more.
 
 
 
