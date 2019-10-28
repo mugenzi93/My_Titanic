@@ -122,6 +122,10 @@ column.
 | embarked |              2 |
 | fare     |              1 |
 
+We will not worry about the survived variable since all missing values
+correspond to the value we are trying to predict, which is the survival
+fate of persons in the test dataset.
+
 ## Defining factor variables
 
 The code chunk below converts appropriate variables to factor variables.
