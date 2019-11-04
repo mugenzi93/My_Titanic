@@ -201,10 +201,12 @@ rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don',
     Miss = replace_na(Miss, 0),
     Mr = replace_na(Mr, 0),
     Mrs = replace_na(Mrs, 0)) %>% 
-  knitr::kable()
+  knitr::kable(caption = "Distribution of Titles by Gender")
 ```
 
 | gender | Master | Miss |  Mr | Mrs | Rare Title |
 | :----- | -----: | ---: | --: | --: | ---------: |
 | male   |     61 |    0 | 757 |   0 |         25 |
 | female |      0 |  264 |   0 | 198 |          4 |
+
+Distribution of Titles by Gender
