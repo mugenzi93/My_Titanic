@@ -171,6 +171,8 @@ table(titanic$gender, titanic$titles) %>%
 Let’s now define all these different name titles as rare titles (for
 those titles which are really rare).
 
+### Distribution of Titles by Gender
+
 ``` r
 # Titles with very low cell counts to be combined to "rare" level
 rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
@@ -178,6 +180,7 @@ rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don',
 
 
 # Also reassign mlle, ms, and mme accordingly
+titanic = 
   titanic %>%
   mutate(
     titles = gsub('(.*, )|(\\..*)', '', titanic$name),
@@ -189,7 +192,8 @@ rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don',
                    "Col" = "Rare Title", "Don" = "Rare Title",
                    "Dr" = "Rare Title", "Major" = "Rare Title",
                    "Rev" = "Rare Title", "Sir" = "Rare Title",
-                   "Jonkheer" = "Rare Title")) %>% 
+                   "Jonkheer" = "Rare Title"))
+titanic %>% 
   group_by(titles, gender) %>% 
   summarise(
     Frequency = n()) %>% 
@@ -201,7 +205,7 @@ rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don',
     Miss = replace_na(Miss, 0),
     Mr = replace_na(Mr, 0),
     Mrs = replace_na(Mrs, 0)) %>% 
-  knitr::kable(caption = "Distribution of Titles by Gender")
+  knitr::kable()
 ```
 
 | gender | Master | Miss |  Mr | Mrs | Rare Title |
@@ -209,4 +213,52 @@ rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don',
 | male   |     61 |    0 | 757 |   0 |         25 |
 | female |      0 |  264 |   0 | 198 |          4 |
 
-Distribution of Titles by Gender
+The reason why I created the title feature was so that I could easily
+use it to estimate missingness in the age variable as we have a total of
+**263** missing values as shown above. To estimate the missing age
+values, I will group by gender, pclass, and titles. This will help us
+clearly see what the passenger’s age would have been, instead of just
+replacing all these missing values with the mean or median.
+
+``` r
+titanic %>% 
+  group_by(gender, pclass, titles) %>% 
+  summarise(
+    median_age = median(age, na.rm = T)) %>% 
+  knitr::kable()
+```
+
+| gender | pclass | titles     | median\_age |
+| :----- | :----- | :--------- | ----------: |
+| male   | 1st    | Master     |         6.0 |
+| male   | 1st    | Mr         |        41.5 |
+| male   | 1st    | Rare Title |        49.5 |
+| male   | 2nd    | Master     |         2.0 |
+| male   | 2nd    | Mr         |        30.0 |
+| male   | 2nd    | Rare Title |        41.5 |
+| male   | 3rd    | Master     |         6.0 |
+| male   | 3rd    | Mr         |        26.0 |
+| female | 1st    | Miss       |        30.0 |
+| female | 1st    | Mrs        |        45.0 |
+| female | 1st    | Rare Title |        43.5 |
+| female | 2nd    | Miss       |        20.0 |
+| female | 2nd    | Mrs        |        30.5 |
+| female | 3rd    | Miss       |        18.0 |
+| female | 3rd    | Mrs        |        31.0 |
+
+The table above gives us a short summary of how we should go about
+replacing all the missing age values. And as expected, those passengers
+with title name **Master** or **Mrs** tend to be younger than those with
+title names **Mrs** or **Mr.** It also looks like there is an age
+variability among passenger class (Pclass) where older passengers seem
+tend to be in the more luxurious 1st class.
+
+# Missingness
+
+## The Age variable
+
+There are **263** missing age values. We will use a technique of
+replacing the missing age values using a model that predicts age based
+on other variables. I will use the **Multivariate Impuatation by Chained
+Equations (Mice)** package to predict what missing age values would have
+been based on other variables.
