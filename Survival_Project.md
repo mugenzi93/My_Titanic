@@ -142,7 +142,7 @@ titanic =
     survived = factor(survived, levels = c("Died", "Survived")),
     embarked = factor(embarked, levels = c("Cherbourg", "Southampton",
                                            "Queenstown")),
-    pclass = factor(pclass, levels = c("1st", "2nd", "3rd"))) %>% view()
+    pclass = factor(pclass, levels = c("1st", "2nd", "3rd")))
 ```
 
 This is a dirty dataset and we either need to drop the rows with NaN
@@ -213,13 +213,6 @@ titanic %>%
 | male   |     61 |    0 | 757 |   0 |         25 |
 | female |      0 |  264 |   0 | 198 |          4 |
 
-The reason why I created the title feature was so that I could easily
-use it to estimate missingness in the age variable as we have a total of
-**263** missing values as shown above. To estimate the missing age
-values, I will group by gender, pclass, and titles. This will help us
-clearly see what the passenger’s age would have been, instead of just
-replacing all these missing values with the mean or median.
-
 ``` r
 titanic %>% 
   group_by(gender, pclass, titles) %>% 
@@ -259,6 +252,143 @@ tend to be in the more luxurious 1st class.
 
 There are **263** missing age values. We will use a technique of
 replacing the missing age values using a model that predicts age based
-on other variables. I will use the **Multivariate Impuatation by Chained
+on other variables. I will use the **Multivariate Imputation by Chained
 Equations (Mice)** package to predict what missing age values would have
 been based on other variables.
+
+``` r
+set.seed(129)
+tit_mod = mice(titanic[, !names(titanic) %in% c("passenger_id","name","ticket","cabin","titles","survived")], 
+                 method = "rf") 
+```
+
+    ## 
+    ##  iter imp variable
+    ##   1   1  age  fare  embarked
+    ##   1   2  age  fare  embarked
+    ##   1   3  age  fare  embarked
+    ##   1   4  age  fare  embarked
+    ##   1   5  age  fare  embarked
+    ##   2   1  age  fare  embarked
+    ##   2   2  age  fare  embarked
+    ##   2   3  age  fare  embarked
+    ##   2   4  age  fare  embarked
+    ##   2   5  age  fare  embarked
+    ##   3   1  age  fare  embarked
+    ##   3   2  age  fare  embarked
+    ##   3   3  age  fare  embarked
+    ##   3   4  age  fare  embarked
+    ##   3   5  age  fare  embarked
+    ##   4   1  age  fare  embarked
+    ##   4   2  age  fare  embarked
+    ##   4   3  age  fare  embarked
+    ##   4   4  age  fare  embarked
+    ##   4   5  age  fare  embarked
+    ##   5   1  age  fare  embarked
+    ##   5   2  age  fare  embarked
+    ##   5   3  age  fare  embarked
+    ##   5   4  age  fare  embarked
+    ##   5   5  age  fare  embarked
+
+``` r
+tit_output = complete(tit_mod)
+```
+
+After running this mice model, I am worried that it might have
+compromised my original titanic dataset. So let use some visualization
+to see if nothing changed.
+
+``` r
+par(mfrow = c(1,2))
+hist(titanic$age, freq = F, main = 'Age: Original Data', 
+  col = 'darkgreen', ylim = c(0,0.04))
+hist(tit_output$age, freq = F, main = 'Age: MICE Output', 
+  col = 'lightgreen', ylim = c(0,0.04))
+```
+
+<img src="Survival_Project_files/figure-gfm/unnamed-chunk-9-1.png" width="90%" />
+
+Now that everything looks good, let us replace all the missing age
+values using the mice model I just built.
+
+``` r
+titanic$age = tit_output$age
+sum(is.na(titanic$age))
+```
+
+    ## [1] 0
+
+## The Cabin variable
+
+With cabin having a total of 1014 missing values, I will just replace
+all of them with letter **U** which stands for **Unknown.**
+
+``` r
+titanic$cabin = replace_na("U")
+sum(is.na(titanic$cabin))
+```
+
+    ## [1] 0
+
+## The Embarked variable
+
+Here, I will just replace the 2 missing values based on on the amount of
+money they paid to embark (fare variable). We can easily visualize this
+by plotting the embarked, fare, and passenger class (Pclass) variables
+on the boxplot.
+
+``` r
+# Get rid of our missing passenger IDs
+embark_fare = titanic %>%
+  filter(passenger_id != 62 & passenger_id != 830)
+
+# Use ggplot2 to visualize embarkment, passenger class, & median fare
+ggplot(embark_fare, aes(x = embarked, y = fare, fill = factor(pclass))) +
+  geom_boxplot() +
+  geom_hline(aes(yintercept = 80), 
+    colour = "red", linetype = "dashed", lwd = 2) +
+  scale_y_continuous(labels = dollar_format()) +
+  theme_few()
+```
+
+<img src="Survival_Project_files/figure-gfm/unnamed-chunk-12-1.png" width="90%" />
+
+Therefore, looking at the plot, we can safely conclude that both
+passengers embarked from the **Cherbourg** port, so I will replace both
+missing values with the corresponding port of embarkment.
+
+``` r
+titanic$embarked[c(62, 830)] = 'Cherbourg'
+sum(is.na(titanic$embarked))
+```
+
+    ## [1] 0
+
+## The Fare variable
+
+``` r
+ggplot(titanic[titanic$pclass == "3rd" & titanic$embarked == "Southampton", ], 
+  aes(x = fare)) +
+  geom_density(fill = "gray50", alpha = 0.4) + 
+  geom_vline(aes(xintercept = median(fare, na.rm = T)),
+    colour = 'black', linetype = "dashed", lwd = 1) +
+  scale_x_continuous(labels = dollar_format()) +
+  labs(
+    title = "Distribution of Payment",
+    x = "Fare") +
+  theme_few()
+```
+
+<img src="Survival_Project_files/figure-gfm/unnamed-chunk-14-1.png" width="90%" />
+
+Therefore, I will replace the missing value with the median of the
+**3rd** passenger class.
+
+``` r
+titanic$fare[1044] = 
+  median(titanic[titanic$pclass == "3rd" & titanic$embarked == "Southampton", ]$fare, 
+         na.rm = TRUE)
+sum(is.na(titanic$fare))
+```
+
+    ## [1] 0
