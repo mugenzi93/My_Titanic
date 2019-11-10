@@ -455,3 +455,23 @@ sum(is.na(titanic$fare))
 ```
 
     ## [1] 0
+
+After this step, the final `Titanic` dataset should be cleaned without
+missing values and necessary variables for the `Prediction` stage.
+
+# Prediction
+
+## Splitting the Dataset
+
+I will split the `Titanic` dataset back to the `Train` and `Test`
+datasets.
+
+``` r
+train = titanic[1:891,]
+test = titanic[892:1309,]
+```
+
+## Building the Model
+
+I will use the `RandomForest` algorithm to build the model by using the
+`Survival` variable in the `Train` dataset.
