@@ -213,14 +213,41 @@ titanic %>%
 
 The table above gives us a short summary of how we should go about replacing all the missing age values. And as expected, those passengers with title name **Master** or **Mrs** tend to be younger than those with title names **Mrs** or **Mr.** It also looks like there is an age variability among passenger class (Pclass) where older passengers seem tend to be in the more luxurious 1st class. 
 
-## Creating a Mother and Child Variable
+## Creating a mother and status Variable
 
-To make it more interesting, I am going to create a `Mother` and `Child` variable to see whether being a mother or child is associated to survival.
+To make it more interesting, I am going to create a `mother` and `status` variable to see whether being a mother or child is associated to survival.
 
-```{r}
+```{r, message=FALSE}
+# Create the column status, and indicate whether child or adult
+titanic$status[titanic$age < 18] = "Child"
+titanic$status[titanic$age >= 18] = "Adult"
 
+# Show counts
+table(titanic$status, titanic$survived)
 ```
 
+Next, let us create the `mother` variable.
+
+```{r, message=FALSE}
+# Adding Mother variable
+titanic$mother = 'Not Mother'
+titanic$mother[
+  titanic$gender == 'female' & titanic$parch > 0 
+  & titanic$age > 18 & titanic$titles != 'Miss'] = 'Mother'
+
+# Show counts
+table(titanic$mother, titanic$survived)
+```
+
+Now let us convert both variables created in factor variables 
+
+```{r}
+titanic = 
+  titanic %>% 
+  mutate(
+    status = factor(status, levels = c("Adult", "Child")),
+    mother = factor(mother, levels = c("Not Mother", "Mother")))
+```
 
 
 # Missingness 

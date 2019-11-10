@@ -261,11 +261,53 @@ title names **Mrs** or **Mr.** It also looks like there is an age
 variability among passenger class (Pclass) where older passengers seem
 tend to be in the more luxurious 1st class.
 
-## Creating a Mother and Child Variable
+## Creating a mother and status Variable
 
-To make it more interesting, I am going to create a `Mother` and `Child`
-variable to see whether being a mother or child is associated to
-survival.
+To make it more interesting, I am going to create a `mother` and
+`status` variable to see whether being a mother or child is associated
+to survival.
+
+``` r
+# Create the column status, and indicate whether child or adult
+titanic$status[titanic$age < 18] = "Child"
+titanic$status[titanic$age >= 18] = "Adult"
+
+# Show counts
+table(titanic$status, titanic$survived)
+```
+
+    ##        
+    ##         Died Survived
+    ##   Adult  372      229
+    ##   Child   52       61
+
+Next, let us create the `mother` variable.
+
+``` r
+# Adding Mother variable
+titanic$mother = 'Not Mother'
+titanic$mother[
+  titanic$gender == 'female' & titanic$parch > 0 
+  & titanic$age > 18 & titanic$titles != 'Miss'] = 'Mother'
+
+# Show counts
+table(titanic$mother, titanic$survived)
+```
+
+    ##             
+    ##              Died Survived
+    ##   Mother       15       37
+    ##   Not Mother  534      305
+
+Now let us convert both variables created in factor variables
+
+``` r
+titanic = 
+  titanic %>% 
+  mutate(
+    status = factor(status, levels = c("Adult", "Child")),
+    mother = factor(mother, levels = c("Not Mother", "Mother")))
+```
 
 # Missingness
 
@@ -285,31 +327,31 @@ tit_mod = mice(titanic[, !names(titanic) %in% c("passenger_id","name","ticket","
 
     ## 
     ##  iter imp variable
-    ##   1   1  age  fare  embarked
-    ##   1   2  age  fare  embarked
-    ##   1   3  age  fare  embarked
-    ##   1   4  age  fare  embarked
-    ##   1   5  age  fare  embarked
-    ##   2   1  age  fare  embarked
-    ##   2   2  age  fare  embarked
-    ##   2   3  age  fare  embarked
-    ##   2   4  age  fare  embarked
-    ##   2   5  age  fare  embarked
-    ##   3   1  age  fare  embarked
-    ##   3   2  age  fare  embarked
-    ##   3   3  age  fare  embarked
-    ##   3   4  age  fare  embarked
-    ##   3   5  age  fare  embarked
-    ##   4   1  age  fare  embarked
-    ##   4   2  age  fare  embarked
-    ##   4   3  age  fare  embarked
-    ##   4   4  age  fare  embarked
-    ##   4   5  age  fare  embarked
-    ##   5   1  age  fare  embarked
-    ##   5   2  age  fare  embarked
-    ##   5   3  age  fare  embarked
-    ##   5   4  age  fare  embarked
-    ##   5   5  age  fare  embarked
+    ##   1   1  age  fare  embarked  status
+    ##   1   2  age  fare  embarked  status
+    ##   1   3  age  fare  embarked  status
+    ##   1   4  age  fare  embarked  status
+    ##   1   5  age  fare  embarked  status
+    ##   2   1  age  fare  embarked  status
+    ##   2   2  age  fare  embarked  status
+    ##   2   3  age  fare  embarked  status
+    ##   2   4  age  fare  embarked  status
+    ##   2   5  age  fare  embarked  status
+    ##   3   1  age  fare  embarked  status
+    ##   3   2  age  fare  embarked  status
+    ##   3   3  age  fare  embarked  status
+    ##   3   4  age  fare  embarked  status
+    ##   3   5  age  fare  embarked  status
+    ##   4   1  age  fare  embarked  status
+    ##   4   2  age  fare  embarked  status
+    ##   4   3  age  fare  embarked  status
+    ##   4   4  age  fare  embarked  status
+    ##   4   5  age  fare  embarked  status
+    ##   5   1  age  fare  embarked  status
+    ##   5   2  age  fare  embarked  status
+    ##   5   3  age  fare  embarked  status
+    ##   5   4  age  fare  embarked  status
+    ##   5   5  age  fare  embarked  status
 
 ``` r
 tit_output = complete(tit_mod)
@@ -327,7 +369,7 @@ hist(tit_output$age, freq = F, main = 'Age: MICE Output',
   col = 'lightgreen', ylim = c(0,0.04))
 ```
 
-<img src="README_files/figure-gfm/unnamed-chunk-13-1.png" width="90%" />
+<img src="README_files/figure-gfm/unnamed-chunk-15-1.png" width="90%" />
 
 Now that everything looks good, let us replace all the missing age
 values using the mice model I just built.
@@ -372,7 +414,7 @@ ggplot(embark_fare, aes(x = embarked, y = fare, fill = factor(pclass))) +
   theme_few()
 ```
 
-<img src="README_files/figure-gfm/unnamed-chunk-16-1.png" width="90%" />
+<img src="README_files/figure-gfm/unnamed-chunk-18-1.png" width="90%" />
 
 Therefore, looking at the plot, we can safely conclude that both
 passengers embarked from the **Cherbourg** port, so I will replace both
@@ -400,7 +442,7 @@ ggplot(titanic[titanic$pclass == "3rd" & titanic$embarked == "Southampton", ],
   theme_few()
 ```
 
-<img src="README_files/figure-gfm/unnamed-chunk-18-1.png" width="90%" />
+<img src="README_files/figure-gfm/unnamed-chunk-20-1.png" width="90%" />
 
 Therefore, I will replace the missing value with the median of the
 **3rd** passenger class.
