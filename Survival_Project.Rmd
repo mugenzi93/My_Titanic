@@ -39,7 +39,7 @@ This titanic project is based on the infamous sinking of Titanic in 1912, a trag
 
 ## Loading the Dataset
 
-```{r, results='asis', include=T}
+```{r}
 # First, we will load the train dataset.
 train = 
   read_csv("Data/train.csv") %>% 
@@ -51,7 +51,7 @@ test =
 # Then both the train and test datasets are combined into a single dataset.
 Titanic = 
   bind_rows(train, test) %>% 
-  rename(gender = "sex") %>% view()
+  rename(gender = "sex")
 ```
 
 After loading and combining both datasets, it is better to highlight what kind of dataset I will be working with. A glimpse of the dataset is in the next code chunk.
