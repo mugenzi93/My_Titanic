@@ -6,13 +6,14 @@ Clement Mugenzi
 # Introduction
 
 This titanic project is based on the infamous sinking of Titanic in
-1912, a tragedy that led to 1,502 people dying out of 2,224 passengers.
-Datasets provided include the train dataset with 891 passengers whose
-survival fate is known and a test dataset with 418 passengers whose
-survival fate is unknown. I will first start by loading both datasets
-then combine them to do some feature engineering (data cleaning and data
-manipulation) then use machine learning tools to predict what the
-survival fate for the passengers in the test dataset would have been.
+1912, a tragedy that led to `1,502` people dying out of `2,224`
+passengers. Datasets provided include the train dataset with `891`
+passengers whose survival fate is known and a test dataset with `418`
+passengers whose survival fate is unknown. I will first start by loading
+both datasets then combine them to do some feature engineering (data
+cleaning and data manipulation) then use machine learning tools to
+predict what the survival fate for the passengers in the test dataset
+would have been.
 
 ## Loading the Dataset
 
@@ -69,7 +70,7 @@ We will not worry about the survived variable since all missing values
 correspond to the value we are trying to predict, which is the survival
 fate of persons in the test dataset.
 
-## Defining factor variables
+## Defining Factor Variables
 
 The code chunk below converts appropriate variables to factor variables.
 
@@ -136,6 +137,34 @@ ggplot(titanic[1:891,], aes(x = famsize, fill = factor(survived))) +
 ```
 
 <img src="README_files/figure-gfm/unnamed-chunk-6-1.png" width="90%" />
+
+And as expected, the larger the family gets the less likely it becomes
+for an individual to survive.
+
+We can also visualize the relationship between `Age` and `Survival`
+
+``` r
+# We'll look at the relationship between age & survival by gender.
+ggplot(titanic[1:891,], aes(age, fill = survived)) + 
+  geom_histogram() + 
+  facet_grid(.~gender) + 
+  labs(
+    title = "Association Between Survival and Age when Gender is factored in",
+    x = "Age") +
+  theme_few()
+```
+
+    ## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+
+<img src="README_files/figure-gfm/unnamed-chunk-7-1.png" width="90%" />
+
+A lot is happening here, but it is clear that the `Female` sex was
+unlikely to survive especially for female aged between 20-40 years old.
+This can be due to a lot of factors such as that mothers might have been
+more vulnerable because they were caring for their children, so they
+were more likely to die. On the male side, it is understandable that
+males aged `20-40` were more likely to survive compared to males in
+other age groups.
 
 ## Cleaning Names
 
@@ -232,6 +261,12 @@ title names **Mrs** or **Mr.** It also looks like there is an age
 variability among passenger class (Pclass) where older passengers seem
 tend to be in the more luxurious 1st class.
 
+## Creating a Mother and Child Variable
+
+To make it more interesting, I am going to create a `Mother` and `Child`
+variable to see whether being a mother or child is associated to
+survival.
+
 # Missingness
 
 ## The Age variable
@@ -292,7 +327,7 @@ hist(tit_output$age, freq = F, main = 'Age: MICE Output',
   col = 'lightgreen', ylim = c(0,0.04))
 ```
 
-<img src="README_files/figure-gfm/unnamed-chunk-11-1.png" width="90%" />
+<img src="README_files/figure-gfm/unnamed-chunk-13-1.png" width="90%" />
 
 Now that everything looks good, let us replace all the missing age
 values using the mice model I just built.
@@ -337,7 +372,7 @@ ggplot(embark_fare, aes(x = embarked, y = fare, fill = factor(pclass))) +
   theme_few()
 ```
 
-<img src="README_files/figure-gfm/unnamed-chunk-14-1.png" width="90%" />
+<img src="README_files/figure-gfm/unnamed-chunk-16-1.png" width="90%" />
 
 Therefore, looking at the plot, we can safely conclude that both
 passengers embarked from the **Cherbourg** port, so I will replace both
@@ -365,7 +400,7 @@ ggplot(titanic[titanic$pclass == "3rd" & titanic$embarked == "Southampton", ],
   theme_few()
 ```
 
-<img src="README_files/figure-gfm/unnamed-chunk-16-1.png" width="90%" />
+<img src="README_files/figure-gfm/unnamed-chunk-18-1.png" width="90%" />
 
 Therefore, I will replace the missing value with the median of the
 **3rd** passenger class.

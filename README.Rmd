@@ -35,7 +35,7 @@ theme_set(theme_minimal() + theme(legend.position = "bottom"))
 
 # Introduction
 
-This titanic project is based on the infamous sinking of Titanic in 1912, a tragedy that led to 1,502 people dying out of 2,224 passengers. Datasets provided include the train dataset with 891 passengers whose survival fate is known and a test dataset with 418 passengers whose survival fate is unknown. I will first start by loading both datasets then combine them to do some feature engineering (data cleaning and data manipulation) then use machine learning tools to predict what the survival fate for the passengers in the test dataset would have been.
+This titanic project is based on the infamous sinking of Titanic in 1912, a tragedy that led to `1,502` people dying out of `2,224` passengers. Datasets provided include the train dataset with `891` passengers whose survival fate is known and a test dataset with `418` passengers whose survival fate is unknown. I will first start by loading both datasets then combine them to do some feature engineering (data cleaning and data manipulation) then use machine learning tools to predict what the survival fate for the passengers in the test dataset would have been.
 
 ## Loading the Dataset
 
@@ -80,7 +80,7 @@ The code chunk below summarises how many missing values we have per column.
 We will not worry about the survived variable since all missing values correspond to the value we are trying to predict, which is the survival fate of persons in the test dataset.
 
 
-## Defining factor variables
+## Defining Factor Variables
 
 The code chunk below converts appropriate variables to factor variables.
 
@@ -134,6 +134,23 @@ ggplot(titanic[1:891,], aes(x = famsize, fill = factor(survived))) +
   labs(x = 'Family Size') +
   theme_few()
 ```
+
+And as expected, the larger the family gets the less likely it becomes for an individual to survive.
+
+We can also visualize the relationship between `Age` and `Survival`
+
+```{r}
+# We'll look at the relationship between age & survival by gender.
+ggplot(titanic[1:891,], aes(age, fill = survived)) + 
+  geom_histogram() + 
+  facet_grid(.~gender) + 
+  labs(
+    title = "Association Between Survival and Age when Gender is factored in",
+    x = "Age") +
+  theme_few()
+```
+
+A lot is happening here, but it is clear that the `Female` sex was unlikely to survive especially for female aged between 20-40 years old. This can be due to a lot of factors such as that mothers might have been more vulnerable because they were caring for their children, so they were more likely to die. On the male side, it is understandable that males aged `20-40` were more likely to survive compared to males in other age groups.
 
 ## Cleaning Names
 
@@ -195,6 +212,15 @@ titanic %>%
 ```
 
 The table above gives us a short summary of how we should go about replacing all the missing age values. And as expected, those passengers with title name **Master** or **Mrs** tend to be younger than those with title names **Mrs** or **Mr.** It also looks like there is an age variability among passenger class (Pclass) where older passengers seem tend to be in the more luxurious 1st class. 
+
+## Creating a Mother and Child Variable
+
+To make it more interesting, I am going to create a `Mother` and `Child` variable to see whether being a mother or child is associated to survival.
+
+```{r}
+
+```
+
 
 
 # Missingness 
