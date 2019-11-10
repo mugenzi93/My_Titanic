@@ -39,7 +39,7 @@ This titanic project is based on the infamous sinking of Titanic in 1912, a trag
 
 ## Loading the Dataset
 
-```{r}
+```{r, message=FALSE}
 # First, we will load the train dataset.
 train = 
   read_csv("Data/train.csv") %>% 
@@ -54,11 +54,7 @@ Titanic =
   rename(gender = "sex")
 ```
 
-After loading and combining both datasets, it is better to highlight what kind of dataset I will be working with. A glimpse of the dataset is in the next code chunk.
-
-```{r}
-glimpse(Titanic)
-```
+After loading and combining both datasets, it is better to highlight what kind of dataset I will be working with.
 
 Some of the variables important to highlight include name, passengerID, gender, age, and each individual's survival status. 
 
@@ -106,6 +102,38 @@ titanic =
 
 
 This is a dirty dataset and we either need to drop the rows with NaN values or fill in the gaps by leveraging the data in the dataset to estimate what those values could have been. We will choose the latter and try to estimate those values and fill in the gaps rather than lose observations.
+
+## Creating a Family Variable
+
+We all know that family usually have the same last name, therefore I will group families according to their last names to make it easier to create the family variable.
+
+```{r}
+# Finally, grab surname from passenger name
+titanic$lastname = sapply(titanic$name,  
+                      function(x) strsplit(x, split = '[,.]')[[1]][1])
+```
+
+
+Since we have variables quantifying the number of family members present for a particular passenger, I will use those to create a brand new `Family` variable which can help us measure the likelihood a passenger will survive given the amount of family members they have on board with them (since family members usually have a tendency to not leave their people behind).
+
+```{r}
+# Creating a Family variable including the passenger themselves.
+titanic$famsize = titanic$sib_sp + titanic$parch + 1
+
+# Creating a Family variable
+titanic$family = paste(titanic$lastname, titanic$famsize, sep = "_")
+```
+
+Thus, using the above created `Family` variable, I can visualize the association between family size and survival of a passenger. Note that the largest family was composed of **11** people.
+
+```{r}
+# Use ggplot2 to visualize the relationship between family size & survival
+ggplot(titanic[1:891,], aes(x = famsize, fill = factor(survived))) +
+  geom_bar(stat = 'count', position = 'dodge') +
+  scale_x_continuous(breaks = c(1:11)) +
+  labs(x = 'Family Size') +
+  theme_few()
+```
 
 ## Cleaning Names
 
@@ -176,7 +204,7 @@ The table above gives us a short summary of how we should go about replacing all
 There are **`r sum(is.na(titanic$age))`** missing age values. We will use a technique of replacing the missing age values using a model that predicts age based on other variables. I will use the **Multivariate Imputation by Chained Equations (Mice)** package to predict what missing age values would have been based on other variables.
 
 
-```{r}
+```{r, message=FALSE}
 set.seed(129)
 tit_mod = mice(titanic[, !names(titanic) %in% c("passenger_id","name","ticket","cabin","titles","survived")], 
                  method = "rf") 
