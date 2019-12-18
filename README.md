@@ -10,10 +10,9 @@ This titanic project is based on the infamous sinking of Titanic in
 passengers. Datasets provided include the train dataset with `891`
 passengers whose survival fate is known and a test dataset with `418`
 passengers whose survival fate is unknown. I will first start by loading
-both datasets then combine them to do some feature engineering (data
-cleaning and data manipulation) then use machine learning tools to
-predict what the survival fate for the passengers in the test dataset
-would have been.
+both datasets then combine them to do some feature engineering then use
+machine learning tools to predict what the survival fate for the
+passengers in the test dataset would have been.
 
 ## Loading the Dataset
 
@@ -78,12 +77,13 @@ The code chunk below converts appropriate variables to factor variables.
 titanic =
   Titanic %>% 
   mutate(
-    survived = recode(survived, "0" = "Died", "1" = "Survived"),
+    gender = recode(gender, "male" = "Male", "female" = "Female"),
+    survived = recode(survived, "0" = "died", "1" = "survived"),
     embarked = recode(embarked, "C" = "Cherbourg", "S" = "Southampton",
                       "Q" = "Queenstown"),
     pclass = recode(pclass, "1" = "1st", "2" = "2nd", "3" = "3rd"),
-    gender = factor(gender, levels = c("male", "female")),
-    survived = factor(survived, levels = c("Died", "Survived")),
+    gender = factor(gender, levels = c("Male", "Female")),
+    survived = factor(survived, levels = c("died", "survived")),
     embarked = factor(embarked, levels = c("Cherbourg", "Southampton",
                                            "Queenstown")),
     pclass = factor(pclass, levels = c("1st", "2nd", "3rd")))
@@ -138,33 +138,31 @@ ggplot(titanic[1:891,], aes(x = famsize, fill = factor(survived))) +
 
 <img src="README_files/figure-gfm/unnamed-chunk-6-1.png" width="90%" />
 
-And as expected, the larger the family gets the less likely it becomes
-for an individual to survive.
+And as expected, the larger the family gets the less likely an
+individual would have survived.
 
 We can also visualize the relationship between `Age` and `Survival`
 
 ``` r
 # We'll look at the relationship between age & survival by gender.
 ggplot(titanic[1:891,], aes(age, fill = survived)) + 
-  geom_histogram() + 
-  facet_grid(.~gender) + 
+  geom_histogram(position = "dodge", binwidth = 5) + 
+  facet_grid(~gender) + 
   labs(
-    title = "Association Between Survival and Age when Gender is factored in",
+    title = "Association Between Survival and Age by Gender",
     x = "Age") +
   theme_few()
 ```
 
-    ## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
-
 <img src="README_files/figure-gfm/unnamed-chunk-7-1.png" width="90%" />
 
-A lot is happening here, but it is clear that the `Female` sex was
-unlikely to survive especially for female aged between 20-40 years old.
-This can be due to a lot of factors such as that mothers might have been
-more vulnerable because they were caring for their children, so they
-were more likely to die. On the male side, it is understandable that
-males aged `20-40` were more likely to survive compared to males in
-other age groups.
+It is clear that the `Female` gender was likely to survive especially
+for female aged between 20-40 years old. This can be due to a lot of
+factors such as that mothers might have been more vulnerable, and thus
+were more likely to be rescued along with their young ones. On the male
+side, males in the `20-40` age group were more likely to die compared to
+males in other age groups because these men might have been involved in
+the rescuing other groups such as mothers, their kids, and the elderly.
 
 ## Cleaning Names
 
@@ -180,8 +178,8 @@ table(titanic$gender, titanic$titles) %>%
 
 |        | Capt | Col | Don | Dona | Dr | Jonkheer | Lady | Major | Master | Miss | Mlle | Mme |  Mr | Mrs | Ms | Rev | Sir | the Countess |
 | ------ | ---: | --: | --: | ---: | -: | -------: | ---: | ----: | -----: | ---: | ---: | --: | --: | --: | -: | --: | --: | -----------: |
-| male   |    1 |   4 |   1 |    0 |  7 |        1 |    0 |     2 |     61 |    0 |    0 |   0 | 757 |   0 |  0 |   8 |   1 |            0 |
-| female |    0 |   0 |   0 |    1 |  1 |        0 |    1 |     0 |      0 |  260 |    2 |   1 |   0 | 197 |  2 |   0 |   0 |            1 |
+| Male   |    1 |   4 |   1 |    0 |  7 |        1 |    0 |     2 |     61 |    0 |    0 |   0 | 757 |   0 |  0 |   8 |   1 |            0 |
+| Female |    0 |   0 |   0 |    1 |  1 |        0 |    1 |     0 |      0 |  260 |    2 |   1 |   0 | 197 |  2 |   0 |   0 |            1 |
 
 Let’s now define all these different name titles as rare titles (for
 those titles which are really rare).
@@ -225,8 +223,8 @@ titanic %>%
 
 | gender | Master | Miss |  Mr | Mrs | Rare Title |
 | :----- | -----: | ---: | --: | --: | ---------: |
-| male   |     61 |    0 | 757 |   0 |         25 |
-| female |      0 |  264 |   0 | 198 |          4 |
+| Male   |     61 |    0 | 757 |   0 |         25 |
+| Female |      0 |  264 |   0 | 198 |          4 |
 
 ``` r
 titanic %>% 
@@ -238,21 +236,21 @@ titanic %>%
 
 | gender | pclass | titles     | median\_age |
 | :----- | :----- | :--------- | ----------: |
-| male   | 1st    | Master     |         6.0 |
-| male   | 1st    | Mr         |        41.5 |
-| male   | 1st    | Rare Title |        49.5 |
-| male   | 2nd    | Master     |         2.0 |
-| male   | 2nd    | Mr         |        30.0 |
-| male   | 2nd    | Rare Title |        41.5 |
-| male   | 3rd    | Master     |         6.0 |
-| male   | 3rd    | Mr         |        26.0 |
-| female | 1st    | Miss       |        30.0 |
-| female | 1st    | Mrs        |        45.0 |
-| female | 1st    | Rare Title |        43.5 |
-| female | 2nd    | Miss       |        20.0 |
-| female | 2nd    | Mrs        |        30.5 |
-| female | 3rd    | Miss       |        18.0 |
-| female | 3rd    | Mrs        |        31.0 |
+| Male   | 1st    | Master     |         6.0 |
+| Male   | 1st    | Mr         |        41.5 |
+| Male   | 1st    | Rare Title |        49.5 |
+| Male   | 2nd    | Master     |         2.0 |
+| Male   | 2nd    | Mr         |        30.0 |
+| Male   | 2nd    | Rare Title |        41.5 |
+| Male   | 3rd    | Master     |         6.0 |
+| Male   | 3rd    | Mr         |        26.0 |
+| Female | 1st    | Miss       |        30.0 |
+| Female | 1st    | Mrs        |        45.0 |
+| Female | 1st    | Rare Title |        43.5 |
+| Female | 2nd    | Miss       |        20.0 |
+| Female | 2nd    | Mrs        |        30.5 |
+| Female | 3rd    | Miss       |        18.0 |
+| Female | 3rd    | Mrs        |        31.0 |
 
 The table above gives us a short summary of how we should go about
 replacing all the missing age values. And as expected, those passengers
@@ -277,7 +275,7 @@ table(titanic$status, titanic$survived)
 ```
 
     ##        
-    ##         Died Survived
+    ##         died survived
     ##   Adult  372      229
     ##   Child   52       61
 
@@ -295,9 +293,8 @@ table(titanic$mother, titanic$survived)
 ```
 
     ##             
-    ##              Died Survived
-    ##   Mother       15       37
-    ##   Not Mother  534      305
+    ##              died survived
+    ##   Not Mother  549      342
 
 Now let us convert both variables created in factor variables
 
@@ -306,7 +303,8 @@ titanic =
   titanic %>% 
   mutate(
     status = factor(status, levels = c("Adult", "Child")),
-    mother = factor(mother, levels = c("Not Mother", "Mother")))
+    mother = factor(mother, levels = c("Not Mother", "Mother"))) %>% 
+  select(-family)
 ```
 
 # Missingness
@@ -459,7 +457,7 @@ sum(is.na(titanic$fare))
 After this step, the final `Titanic` dataset should be cleaned without
 missing values and necessary variables for the `Prediction` stage.
 
-# Prediction
+# Model Building
 
 ## Splitting the Dataset
 
@@ -471,7 +469,21 @@ train = titanic[1:891,]
 test = titanic[892:1309,]
 ```
 
-## Building the Model
-
 I will use the `RandomForest` algorithm to build the model by using the
 `Survival` variable in the `Train` dataset.
+
+``` r
+# Set a random seed
+set.seed(754)
+
+# Build the model (note: not all possible variables are used)
+rf_model = randomForest(survived ~ pclass + gender + age + sib_sp + parch +
+                          fare + embarked + famsize + mother, 
+                        data = train)
+                                             
+# Show model error
+plot(rf_model, ylim = c(0,0.36))
+legend('topright', colnames(rf_model$err.rate), col = 1:3, fill = 1:3)
+```
+
+<img src="README_files/figure-gfm/unnamed-chunk-23-1.png" width="90%" />
