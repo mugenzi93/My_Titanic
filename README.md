@@ -78,12 +78,10 @@ titanic =
   Titanic %>% 
   mutate(
     gender = recode(gender, "male" = "Male", "female" = "Female"),
-    survived = recode(survived, "0" = "died", "1" = "survived"),
     embarked = recode(embarked, "C" = "Cherbourg", "S" = "Southampton",
                       "Q" = "Queenstown"),
     pclass = recode(pclass, "1" = "1st", "2" = "2nd", "3" = "3rd"),
     gender = factor(gender, levels = c("Male", "Female")),
-    survived = factor(survived, levels = c("died", "survived")),
     embarked = factor(embarked, levels = c("Cherbourg", "Southampton",
                                            "Queenstown")),
     pclass = factor(pclass, levels = c("1st", "2nd", "3rd")))
@@ -254,30 +252,29 @@ titanic %>%
 
 The table above gives us a short summary of how we should go about
 replacing all the missing age values. And as expected, those passengers
-with title name **Master** or **Mrs** tend to be younger than those with
-title names **Mrs** or **Mr.** It also looks like there is an age
-variability among passenger class (Pclass) where older passengers seem
-tend to be in the more luxurious 1st class.
+with title name **Master** or **Miss** tend to be younger than those
+with title names **Mrs** or **Mr.** It also looks like there is an age
+variability among passenger class (Pclass) where older passengers tend
+to be in the more luxurious 1st class.
 
 ## Creating a mother and status Variable
 
 To make it more interesting, I am going to create a `mother` and
 `status` variable to see whether being a mother or child is associated
-to survival.
+with survival.
 
 ``` r
 # Create the column status, and indicate whether child or adult
 titanic$status[titanic$age < 18] = "Child"
 titanic$status[titanic$age >= 18] = "Adult"
-
 # Show counts
 table(titanic$status, titanic$survived)
 ```
 
     ##        
-    ##         died survived
-    ##   Adult  372      229
-    ##   Child   52       61
+    ##           0   1
+    ##   Adult 372 229
+    ##   Child  52  61
 
 Next, let us create the `mother` variable.
 
@@ -293,8 +290,8 @@ table(titanic$mother, titanic$survived)
 ```
 
     ##             
-    ##              died survived
-    ##   Not Mother  549      342
+    ##                0   1
+    ##   Not Mother 549 342
 
 Now let us convert both variables created in factor variables
 
@@ -303,8 +300,10 @@ titanic =
   titanic %>% 
   mutate(
     status = factor(status, levels = c("Adult", "Child")),
-    mother = factor(mother, levels = c("Not Mother", "Mother"))) %>% 
-  select(-family)
+    mother = factor(mother, levels = c("Not Mother", "Mother")),
+    titles = factor(titles, levels = c("Mr", "Mrs", "Miss", "Master",
+                                       "Rare Title")),
+    status = factor(status, levels = c("Adult", "Child")))
 ```
 
 # Missingness
@@ -316,44 +315,6 @@ replacing the missing age values using a model that predicts age based
 on other variables. I will use the **Multivariate Imputation by Chained
 Equations (Mice)** package to predict what missing age values would have
 been based on other variables.
-
-``` r
-set.seed(129)
-tit_mod = mice(titanic[, !names(titanic) %in% c("passenger_id","name","ticket","cabin","titles","survived")], 
-                 method = "rf") 
-```
-
-    ## 
-    ##  iter imp variable
-    ##   1   1  age  fare  embarked  status
-    ##   1   2  age  fare  embarked  status
-    ##   1   3  age  fare  embarked  status
-    ##   1   4  age  fare  embarked  status
-    ##   1   5  age  fare  embarked  status
-    ##   2   1  age  fare  embarked  status
-    ##   2   2  age  fare  embarked  status
-    ##   2   3  age  fare  embarked  status
-    ##   2   4  age  fare  embarked  status
-    ##   2   5  age  fare  embarked  status
-    ##   3   1  age  fare  embarked  status
-    ##   3   2  age  fare  embarked  status
-    ##   3   3  age  fare  embarked  status
-    ##   3   4  age  fare  embarked  status
-    ##   3   5  age  fare  embarked  status
-    ##   4   1  age  fare  embarked  status
-    ##   4   2  age  fare  embarked  status
-    ##   4   3  age  fare  embarked  status
-    ##   4   4  age  fare  embarked  status
-    ##   4   5  age  fare  embarked  status
-    ##   5   1  age  fare  embarked  status
-    ##   5   2  age  fare  embarked  status
-    ##   5   3  age  fare  embarked  status
-    ##   5   4  age  fare  embarked  status
-    ##   5   5  age  fare  embarked  status
-
-``` r
-tit_output = complete(tit_mod)
-```
 
 After running this mice model, I am worried that it might have
 compromised my original titanic dataset. So let use some visualization
@@ -472,18 +433,124 @@ test = titanic[892:1309,]
 I will use the `RandomForest` algorithm to build the model by using the
 `Survival` variable in the `Train` dataset.
 
+### Random Forest Model
+
 ``` r
 # Set a random seed
 set.seed(754)
 
 # Build the model (note: not all possible variables are used)
-rf_model = randomForest(survived ~ pclass + gender + age + sib_sp + parch +
-                          fare + embarked + famsize + mother, 
-                        data = train)
+rf_model = randomForest(factor(survived) ~ pclass + gender + age + sib_sp + parch +
+                          fare + embarked + famsize + mother + titles,data = train,
+                        mtry = 2, importance = TRUE)
                                              
+rf_model
+```
+
+    ## 
+    ## Call:
+    ##  randomForest(formula = factor(survived) ~ pclass + gender + age +      sib_sp + parch + fare + embarked + famsize + mother + titles,      data = train, mtry = 2, importance = TRUE) 
+    ##                Type of random forest: classification
+    ##                      Number of trees: 500
+    ## No. of variables tried at each split: 2
+    ## 
+    ##         OOB estimate of  error rate: 16.84%
+    ## Confusion matrix:
+    ##     0   1 class.error
+    ## 0 501  48  0.08743169
+    ## 1 102 240  0.29824561
+
+``` r
 # Show model error
-plot(rf_model, ylim = c(0,0.36))
+plot(rf_model, ylim = c(0,0.40))
 legend('topright', colnames(rf_model$err.rate), col = 1:3, fill = 1:3)
 ```
 
-<img src="README_files/figure-gfm/unnamed-chunk-23-1.png" width="90%" />
+<img src="README_files/figure-gfm/unnamed-chunk-24-1.png" width="90%" />
+
+In this figure, the test error is displayed as a function of the number
+of trees. Each colored line correspond to the error rates of `survived`,
+`Out-of-Bag`, and `Died` respectively.
+
+## Variable Importance
+
+Let’s look at relative variable importance by plotting the mean decrease
+in Gini index calculated across all trees.
+
+``` r
+# Get importance
+importance = importance(rf_model)
+varImportance = data.frame(Variables = row.names(importance), 
+                            Importance = round(importance[ ,'MeanDecreaseGini'],2))
+
+# Create a rank variable based on importance
+rankImportance = varImportance %>%
+  mutate(Rank = paste0('#',dense_rank(desc(Importance))))
+
+# Use ggplot2 to visualize the relative importance of variables
+ggplot(rankImportance, aes(x = reorder(Variables, Importance), 
+    y = Importance, fill = Importance)) +
+  geom_bar(stat = 'identity') + 
+  geom_text(aes(x = Variables, y = 0.5, label = Rank),
+    hjust = 0, vjust = 0.55, size = 4, colour = 'red') +
+  labs(x = 'Variables') +
+  coord_flip() + 
+  theme_few()
+```
+
+<img src="README_files/figure-gfm/unnamed-chunk-25-1.png" width="90%" />
+
+This figure shows a graphical representation of the variable importance
+in the `titanic` data. We see the mean decrease in Gini index for each
+variable, relative to the largest. The variables with the largest mean
+decrease in Gini index are `titles`, `gender`, and `fare`.
+
+## Receiver Operating Characteristic Curve
+
+``` r
+attach(train)
+par(pty = "s")
+roc(survived, rf_model$votes[,1], plot = TRUE, 
+    print.auc = TRUE, xlab = "False Positive Percentage", 
+    ylab = "True Postive Percentage", lwd = 4)
+```
+
+<img src="README_files/figure-gfm/unnamed-chunk-26-1.png" width="90%" />
+
+    ## 
+    ## Call:
+    ## roc.default(response = survived, predictor = rf_model$votes[,     1], plot = TRUE, print.auc = TRUE, xlab = "False Positive Percentage",     ylab = "True Postive Percentage", lwd = 4)
+    ## 
+    ## Data: rf_model$votes[, 1] in 549 controls (survived 0) > 342 cases (survived 1).
+    ## Area under the curve: 0.8711
+
+# Prediction
+
+Last step in this project is to predict what the survival fate of the
+subjects in the test set would have been using the model built above.
+
+``` r
+# Predict using the test set
+prediction = predict(rf_model, test)
+
+# Save the solution to a dataframe with two columns: PassengerId and Survived (predicted values)
+solution = data.frame(PassengerID = test$passenger_id, Survived = prediction)
+
+# Write the solution to file
+write.csv(solution, file = 'rf_modelPred.csv', row.names = F)
+```
+
+# Conclusion
+
+In this classification problem, I deemed random forest to be the
+suitable tree-based methods to predict the survival fate of subjects in
+the test dataset. I approached this problem by conducting feature
+engineering to leverage original variables provided to me. I created the
+`titles` variable from the `name` variable, which was found to be the
+most important of all. This means a subject’s class, whether it be their
+marital status or age, was a determining factor for one’s survival fate.
+The model built has a 87% AUC, meaning that there is lower likelihood
+that the model will make type 1 or type 2 errors. Obviously this problem
+can be approcahed in different ways, different models could be used, and
+certainly different predictor variables could be created from the
+existing ones.
