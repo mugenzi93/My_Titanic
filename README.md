@@ -18,16 +18,16 @@ passengers in the test dataset would have been.
 
 ``` r
 # First, we will load the train dataset.
-train = 
+f_train = 
   read_csv("Data/train.csv") %>% 
   janitor::clean_names() 
 # Second, the test dataset is loaded
-test = 
+f_test = 
   read_csv("Data/test.csv") %>% 
   janitor::clean_names()
 # Then both the train and test datasets are combined into a single dataset.
 Titanic = 
-  bind_rows(train, test) %>% 
+  bind_rows(f_train, f_test) %>% 
   rename(gender = "sex")
 ```
 
@@ -72,18 +72,24 @@ fate of persons in the test dataset.
 ## Defining Factor Variables
 
 The code chunk below converts appropriate variables to factor variables.
+With cabin having a total of multiple missing values, I will just
+replace all of them with letter **U** which stands for **Unknown**.
 
 ``` r
 titanic =
-  Titanic %>% 
+  Titanic %>%
+  rename(survival = survived) %>%
   mutate(
     gender = recode(gender, "male" = "Male", "female" = "Female"),
     embarked = recode(embarked, "C" = "Cherbourg", "S" = "Southampton",
                       "Q" = "Queenstown"),
     pclass = recode(pclass, "1" = "1st", "2" = "2nd", "3" = "3rd"),
+    survival = recode(survival, "0" = "Died", "1" = "Survived"),
+    cabin = replace_na(cabin, "U"),
     gender = factor(gender, levels = c("Male", "Female")),
     embarked = factor(embarked, levels = c("Cherbourg", "Southampton",
                                            "Queenstown")),
+    survival = factor(survival, levels = c("Died", "Survived")),
     pclass = factor(pclass, levels = c("1st", "2nd", "3rd")))
 ```
 
@@ -127,7 +133,7 @@ people.
 
 ``` r
 # Use ggplot2 to visualize the relationship between family size & survival
-ggplot(titanic[1:891,], aes(x = famsize, fill = factor(survived))) +
+ggplot(titanic[1:891,], aes(x = famsize, fill = survival)) +
   geom_bar(stat = 'count', position = 'dodge') +
   scale_x_continuous(breaks = c(1:11)) +
   labs(x = 'Family Size') +
@@ -143,7 +149,7 @@ We can also visualize the relationship between `Age` and `Survival`
 
 ``` r
 # We'll look at the relationship between age & survival by gender.
-ggplot(titanic[1:891,], aes(age, fill = survived)) + 
+ggplot(titanic[1:891,], aes(age, fill = survival)) + 
   geom_histogram(position = "dodge", binwidth = 5) + 
   facet_grid(~gender) + 
   labs(
@@ -186,7 +192,7 @@ those titles which are really rare).
 
 ``` r
 # Titles with very low cell counts to be combined to "rare" level
-rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
+rare_title = c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
                 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
 
 
@@ -259,39 +265,26 @@ to be in the more luxurious 1st class.
 
 ## Creating a mother and status Variable
 
-To make it more interesting, I am going to create a `mother` and
-`status` variable to see whether being a mother or child is associated
-with survival.
+To make it more interesting, I am going to create a `mother` variable to
+see whether being a mother or child is associated with survival.
 
-``` r
-# Create the column status, and indicate whether child or adult
-titanic$status[titanic$age < 18] = "Child"
-titanic$status[titanic$age >= 18] = "Adult"
-# Show counts
-table(titanic$status, titanic$survived)
-```
-
-    ##        
-    ##           0   1
-    ##   Adult 372 229
-    ##   Child  52  61
-
-Next, let us create the `mother` variable.
+let us create the `mother` variable.
 
 ``` r
 # Adding Mother variable
 titanic$mother = 'Not Mother'
 titanic$mother[
-  titanic$gender == 'female' & titanic$parch > 0 
+  titanic$gender == 'Female' & titanic$parch > 0 
   & titanic$age > 18 & titanic$titles != 'Miss'] = 'Mother'
 
 # Show counts
-table(titanic$mother, titanic$survived)
+table(titanic$mother, titanic$survival)
 ```
 
     ##             
-    ##                0   1
-    ##   Not Mother 549 342
+    ##              Died Survived
+    ##   Mother       15       37
+    ##   Not Mother  534      305
 
 Now let us convert both variables created in factor variables
 
@@ -299,11 +292,9 @@ Now let us convert both variables created in factor variables
 titanic = 
   titanic %>% 
   mutate(
-    status = factor(status, levels = c("Adult", "Child")),
     mother = factor(mother, levels = c("Not Mother", "Mother")),
     titles = factor(titles, levels = c("Mr", "Mrs", "Miss", "Master",
-                                       "Rare Title")),
-    status = factor(status, levels = c("Adult", "Child")))
+                                       "Rare Title")))
 ```
 
 # Missingness
@@ -328,7 +319,7 @@ hist(tit_output$age, freq = F, main = 'Age: MICE Output',
   col = 'lightgreen', ylim = c(0,0.04))
 ```
 
-<img src="README_files/figure-gfm/unnamed-chunk-15-1.png" width="90%" />
+<img src="README_files/figure-gfm/unnamed-chunk-14-1.png" width="90%" />
 
 Now that everything looks good, let us replace all the missing age
 values using the mice model I just built.
@@ -336,18 +327,6 @@ values using the mice model I just built.
 ``` r
 titanic$age = tit_output$age
 sum(is.na(titanic$age))
-```
-
-    ## [1] 0
-
-## The Cabin variable
-
-With cabin having a total of 1014 missing values, I will just replace
-all of them with letter **U** which stands for **Unknown.**
-
-``` r
-titanic$cabin = replace_na("U")
-sum(is.na(titanic$cabin))
 ```
 
     ## [1] 0
@@ -373,7 +352,7 @@ ggplot(embark_fare, aes(x = embarked, y = fare, fill = factor(pclass))) +
   theme_few()
 ```
 
-<img src="README_files/figure-gfm/unnamed-chunk-18-1.png" width="90%" />
+<img src="README_files/figure-gfm/unnamed-chunk-16-1.png" width="90%" />
 
 Therefore, looking at the plot, we can safely conclude that both
 passengers embarked from the **Cherbourg** port, so I will replace both
@@ -401,7 +380,7 @@ ggplot(titanic[titanic$pclass == "3rd" & titanic$embarked == "Southampton", ],
   theme_few()
 ```
 
-<img src="README_files/figure-gfm/unnamed-chunk-20-1.png" width="90%" />
+<img src="README_files/figure-gfm/unnamed-chunk-18-1.png" width="90%" />
 
 Therefore, I will replace the missing value with the median of the
 **3rd** passenger class.
@@ -426,119 +405,159 @@ I will split the `Titanic` dataset back to the `Train` and `Test`
 datasets.
 
 ``` r
-train = titanic[1:891,]
-test = titanic[892:1309,]
+titanic = titanic %>%
+  select(-c("name", "passenger_id", "ticket", 
+            "family", "lastname", "cabin"))
+
+# I thought of using caret but it is not possible in this situation due
+# to missing values in the test dataset
+
+# splitting the dataset
+test_data = titanic[is.na(titanic$survival),]
+train_data = na.omit(titanic)
+# pull out the dependent variable
+train_df = train_data[,-1]
+test_df = test_data[,-1]
 ```
 
-I will use the `RandomForest` algorithm to build the model by using the
-`Survival` variable in the `Train` dataset.
+Next, I will optimize a randomForest and Gradient Boosting models with
+`survived` as the response variable against all predictors.
 
 ### Random Forest Model
 
 ``` r
-# Set a random seed
-set.seed(754)
+# set up training control
+ctrl = trainControl(method = "repeatedcv", # 10 fold cross validation
+                    number = 5, # do 5 repetition of cv
+                    summaryFunction = twoClassSummary, # Use AUC to pick the best model
+                    classProbs = TRUE,
+                    allowParallel = TRUE)
 
-# Build the model (note: not all possible variables are used)
-rf_model = randomForest(factor(survived) ~ pclass + gender + age + sib_sp + parch +
-                          fare + embarked + famsize + mother + titles,data = train,
-                        mtry = 2, importance = TRUE)
-                                             
-rf_model
+
+rf.grid = expand.grid(mtry = 1:3,
+                      splitrule = "gini",
+                      min.node.size = 1:3)
+set.seed(1) # set the seed
+rf.fit = train(x = train_df, y = train_data$survival,
+                method = "ranger",
+                metric = "ROC", # performance criterion to select the best model
+                trControl = ctrl,
+                tuneGrid = rf.grid,
+                verbose = FALSE)
+ggplot(rf.fit, highlight = TRUE)
 ```
 
-    ## 
-    ## Call:
-    ##  randomForest(formula = factor(survived) ~ pclass + gender + age +      sib_sp + parch + fare + embarked + famsize + mother + titles,      data = train, mtry = 2, importance = TRUE) 
-    ##                Type of random forest: classification
-    ##                      Number of trees: 500
-    ## No. of variables tried at each split: 2
-    ## 
-    ##         OOB estimate of  error rate: 16.84%
-    ## Confusion matrix:
-    ##     0   1 class.error
-    ## 0 501  48  0.08743169
-    ## 1 102 240  0.29824561
-
-``` r
-# Show model error
-plot(rf_model, ylim = c(0,0.40))
-legend('topright', colnames(rf_model$err.rate), col = 1:3, fill = 1:3)
-```
-
-<img src="README_files/figure-gfm/unnamed-chunk-24-1.png" width="90%" />
-
-In this figure, the test error is displayed as a function of the number
-of trees. Each colored line correspond to the error rates of `survived`,
-`Out-of-Bag`, and `Died` respectively.
-
-## Variable Importance
-
-Let’s look at relative variable importance by plotting the mean decrease
-in Gini index calculated across all trees.
-
-``` r
-# Get importance
-importance = importance(rf_model)
-varImportance = data.frame(Variables = row.names(importance), 
-                            Importance = round(importance[ ,'MeanDecreaseGini'],2))
-
-# Create a rank variable based on importance
-rankImportance = varImportance %>%
-  mutate(Rank = paste0('#',dense_rank(desc(Importance))))
-
-# Use ggplot2 to visualize the relative importance of variables
-ggplot(rankImportance, aes(x = reorder(Variables, Importance), 
-    y = Importance, fill = Importance)) +
-  geom_bar(stat = 'identity') + 
-  geom_text(aes(x = Variables, y = 0.5, label = Rank),
-    hjust = 0, vjust = 0.55, size = 4, colour = 'red') +
-  labs(x = 'Variables') +
-  coord_flip() + 
-  theme_few()
-```
-
-<img src="README_files/figure-gfm/unnamed-chunk-25-1.png" width="90%" />
+<img src="README_files/figure-gfm/unnamed-chunk-21-1.png" width="90%" />
 
 This figure shows a graphical representation of the variable importance
 in the `titanic` data. We see the mean decrease in Gini index for each
 variable, relative to the largest. The variables with the largest mean
 decrease in Gini index are `titles`, `gender`, and `fare`.
 
-## Receiver Operating Characteristic Curve
+In this figure, the test error is displayed as a function of the number
+of trees. Each colored line correspond to the error rates of `survived`,
+`Out-of-Bag`, and `Died` respectively.
+
+## Gradient Boosting Model
 
 ``` r
-attach(train)
-par(pty = "s")
-roc(survived, rf_model$votes[,1], plot = TRUE, 
-    print.auc = TRUE, xlab = "False Positive Percentage", 
-    ylab = "True Postive Percentage", lwd = 4)
+# Use the expand.grid to specify the search space
+grid = expand.grid(n.trees = c(2000,3000,4000), # number of trees to fit
+                        interaction.depth = 2:10, # depth of variable interaction
+                        shrinkage = c(0.001, 0.003,0.005), # try 3 values for learning rate
+                        n.minobsinnode = 1)
+
+# Boosting model
+set.seed(1) # set the seed
+gbm.fit = train(x = train_df, y = train_data$survival,
+                method = "gbm",
+                metric = "ROC", # performance criterion to select the best model
+                trControl = ctrl,
+                tuneGrid = grid,
+                verbose = FALSE)
+# variable importance
+summary(gbm.fit$finalModel, las = 2, cex.names = 0.6)
 ```
 
-<img src="README_files/figure-gfm/unnamed-chunk-26-1.png" width="90%" />
+<img src="README_files/figure-gfm/unnamed-chunk-22-1.png" width="90%" />
+
+    ##               var    rel.inf
+    ## titles     titles 29.8061376
+    ## fare         fare 25.0616783
+    ## age           age 18.0926636
+    ## pclass     pclass 10.5565171
+    ## gender     gender  5.4151464
+    ## famsize   famsize  5.0723898
+    ## embarked embarked  2.9156831
+    ## sib_sp     sib_sp  1.9537460
+    ## parch       parch  0.8263614
+    ## mother     mother  0.2996766
+
+``` r
+# looking at the tuning results
+gbm.fit$bestTune
+```
+
+    ##    n.trees interaction.depth shrinkage n.minobsinnode
+    ## 63    4000                 4     0.005              1
+
+``` r
+# plot the performance of the training models
+plot(gbm.fit)
+```
+
+<img src="README_files/figure-gfm/unnamed-chunk-22-2.png" width="90%" />
+
+``` r
+res = gbm.fit$results
+# GBM model predictions and performance byy making predictions using the test data
+gbm.pred = predict(gbm.fit, newdata = test_data, type = "prob")[,2]
+```
+
+## RandomForest Vs Boosting
+
+``` r
+resamp = resamples(list(rf = rf.fit, gbm = gbm.fit))
+summary(resamp)
+```
 
     ## 
     ## Call:
-    ## roc.default(response = survived, predictor = rf_model$votes[,     1], plot = TRUE, print.auc = TRUE, xlab = "False Positive Percentage",     ylab = "True Postive Percentage", lwd = 4)
+    ## summary.resamples(object = resamp)
     ## 
-    ## Data: rf_model$votes[, 1] in 549 controls (survived 0) > 342 cases (survived 1).
-    ## Area under the curve: 0.8711
+    ## Models: rf, gbm 
+    ## Number of resamples: 5 
+    ## 
+    ## ROC 
+    ##          Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
+    ## rf  0.8361441 0.8639657 0.8895916 0.8751462 0.8899733 0.8960561    0
+    ## gbm 0.5174465 0.5493412 0.5971014 0.5813585 0.6044118 0.6384916    0
+    ## 
+    ## Sens 
+    ##           Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
+    ## rf  0.87272727 0.8899083 0.9000000 0.8997998 0.9181818 0.9181818    0
+    ## gbm 0.08181818 0.1000000 0.1272727 0.1422519 0.1636364 0.2385321    0
+    ## 
+    ## Spec 
+    ##          Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
+    ## rf  0.6811594 0.7058824 0.7101449 0.7312020 0.7647059 0.7941176    0
+    ## gbm 0.8260870 0.8382353 0.8382353 0.8538789 0.8550725 0.9117647    0
+
+``` r
+# Visualizing RMSE
+bwplot(resamp, metric = "ROC")
+```
+
+<img src="README_files/figure-gfm/unnamed-chunk-23-1.png" width="90%" />
+
+## 
+
+## Receiver Operating Characteristic Curve
 
 # Prediction
 
 Last step in this project is to predict what the survival fate of the
 subjects in the test set would have been using the model built above.
-
-``` r
-# Predict using the test set
-prediction = predict(rf_model, test)
-
-# Save the solution to a dataframe with two columns: PassengerId and Survived (predicted values)
-solution = data.frame(PassengerID = test$passenger_id, Survived = prediction)
-
-# Write the solution to file
-write.csv(solution, file = 'rf_modelPred.csv', row.names = F)
-```
 
 # Conclusion
 
