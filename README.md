@@ -421,7 +421,7 @@ test_df = test_data[,-1]
 ```
 
 Next, I will optimize a randomForest and Gradient Boosting models with
-`survived` as the response variable against all predictors.
+`survival` as the response variable against all predictors.
 
 ### Random Forest Model
 
@@ -449,10 +449,18 @@ ggplot(rf.fit, highlight = TRUE)
 
 <img src="README_files/figure-gfm/unnamed-chunk-21-1.png" width="90%" />
 
+This randomForest model was tuned and optimized, resulting in the
+highest **Accuracy** of 0.8737395 over the optimization range.
+
+**Variable Importance for RandomForest
+model:**
+
+<img src="README_files/figure-gfm/variable importance-1.png" width="90%" />
+
 This figure shows a graphical representation of the variable importance
 in the `titanic` data. We see the mean decrease in Gini index for each
 variable, relative to the largest. The variables with the largest mean
-decrease in Gini index are `titles`, `gender`, and `fare`.
+decrease in Gini index are `titles`, `fare`, and `gender`.
 
 In this figure, the test error is displayed as a function of the number
 of trees. Each colored line correspond to the error rates of `survived`,
@@ -482,16 +490,16 @@ summary(gbm.fit$finalModel, las = 2, cex.names = 0.6)
 <img src="README_files/figure-gfm/unnamed-chunk-22-1.png" width="90%" />
 
     ##               var    rel.inf
-    ## titles     titles 29.8061376
-    ## fare         fare 25.0616783
-    ## age           age 18.0926636
-    ## pclass     pclass 10.5565171
-    ## gender     gender  5.4151464
-    ## famsize   famsize  5.0723898
-    ## embarked embarked  2.9156831
-    ## sib_sp     sib_sp  1.9537460
-    ## parch       parch  0.8263614
-    ## mother     mother  0.2996766
+    ## fare         fare 26.6500327
+    ## titles     titles 25.5219802
+    ## age           age 21.7303302
+    ## pclass     pclass  9.3927246
+    ## gender     gender  5.3825671
+    ## famsize   famsize  4.4792791
+    ## embarked embarked  3.2064286
+    ## sib_sp     sib_sp  2.2961413
+    ## parch       parch  1.0278034
+    ## mother     mother  0.3127128
 
 ``` r
 # looking at the tuning results
@@ -499,7 +507,7 @@ gbm.fit$bestTune
 ```
 
     ##    n.trees interaction.depth shrinkage n.minobsinnode
-    ## 63    4000                 4     0.005              1
+    ## 74    3000                 8     0.005              1
 
 ``` r
 # plot the performance of the training models
@@ -531,17 +539,17 @@ summary(resamp)
     ## ROC 
     ##          Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
     ## rf  0.8361441 0.8639657 0.8895916 0.8751462 0.8899733 0.8960561    0
-    ## gbm 0.5174465 0.5493412 0.5971014 0.5813585 0.6044118 0.6384916    0
+    ## gbm 0.5074198 0.5548748 0.5911726 0.5809728 0.6197861 0.6316109    0
     ## 
     ## Sens 
-    ##           Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
-    ## rf  0.87272727 0.8899083 0.9000000 0.8997998 0.9181818 0.9181818    0
-    ## gbm 0.08181818 0.1000000 0.1272727 0.1422519 0.1636364 0.2385321    0
+    ##          Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
+    ## rf  0.8727273 0.8899083 0.9000000 0.8997998 0.9181818 0.9181818    0
+    ## gbm 0.1000000 0.1363636 0.1363636 0.1567640 0.1909091 0.2201835    0
     ## 
     ## Spec 
     ##          Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
     ## rf  0.6811594 0.7058824 0.7101449 0.7312020 0.7647059 0.7941176    0
-    ## gbm 0.8260870 0.8382353 0.8382353 0.8538789 0.8550725 0.9117647    0
+    ## gbm 0.8115942 0.8235294 0.8550725 0.8509804 0.8676471 0.8970588    0
 
 ``` r
 # Visualizing RMSE
@@ -550,14 +558,7 @@ bwplot(resamp, metric = "ROC")
 
 <img src="README_files/figure-gfm/unnamed-chunk-23-1.png" width="90%" />
 
-## 
-
-## Receiver Operating Characteristic Curve
-
-# Prediction
-
-Last step in this project is to predict what the survival fate of the
-subjects in the test set would have been using the model built above.
+## Performance of both models on the Testing Data: Predictions
 
 # Conclusion
 

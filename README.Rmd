@@ -364,7 +364,7 @@ test_df = test_data[,-1]
 
 
 
-Next, I will optimize a randomForest and Gradient Boosting models with `survived` as the response variable against all predictors.
+Next, I will optimize a randomForest and Gradient Boosting models with `survival` as the response variable against all predictors.
 
 ### Random Forest Model
 
@@ -392,14 +392,30 @@ ggplot(rf.fit, highlight = TRUE)
 ```
 
 
+This randomForest model was tuned and optimized, resulting in the highest **Accuracy** of `r 1-rf.fit$finalModel$prediction.error` over the optimization range.
+
+**Variable Importance for RandomForest model:**
+
+```{r variable importance, echo=FALSE}
+# randomForest using ranger for just variable importance
+set.seed(1)
+rf_imp = ranger(survival~., data = train_data,
+                mtry = 3, 
+                importance = "impurity",
+                scale.permutation.importance = TRUE)
+
+# variable importance
+barplot(sort(ranger::importance(rf_imp), decreasing = FALSE),
+        las = 2, horiz = TRUE, cex.names = 0.7,
+        col = colorRampPalette(colors = c("darkred", "white", "darkblue"))(10))
+```
 
 
-This figure shows a graphical representation of the variable importance in the `titanic` data. We see the mean decrease in Gini index for each variable, relative to the largest. The variables with the largest mean decrease in Gini index are `titles`, `gender`, and `fare`.
+
+
+This figure shows a graphical representation of the variable importance in the `titanic` data. We see the mean decrease in Gini index for each variable, relative to the largest. The variables with the largest mean decrease in Gini index are `titles`, `fare`, and `gender`.
 
 In this figure, the test error is displayed as a function of  the number of trees. Each colored line correspond to the error rates of `survived`, `Out-of-Bag`, and `Died` respectively.
-
-
-
 
 
 ## Gradient Boosting Model
@@ -433,11 +449,6 @@ gbm.pred = predict(gbm.fit, newdata = test_data, type = "prob")[,2]
 
 
 
-
-
-
-
-
 ## RandomForest Vs Boosting
 
 ```{r}
@@ -447,24 +458,17 @@ summary(resamp)
 bwplot(resamp, metric = "ROC")
 ```
 
-## 
 
 
 
 
-## Receiver Operating Characteristic Curve
-
+## Performance of both models on the Testing Data: Predictions
 
 
 
 
 
 
-
-
-# Prediction
-
-Last step in this project is to predict what the survival fate of the subjects in the test set would have been using the model built above.
 
 
 
