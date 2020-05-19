@@ -339,16 +339,13 @@ After this step, the final `Titanic` dataset should be cleaned without missing v
 
 
 
-# Model Building
-
-## Splitting the Dataset
+## Splitting the Dataset for model building
 
 I will split the `Titanic` dataset back to the `Train` and `Test` datasets.
 
 ```{r}
 titanic = titanic %>%
-  select(-c("name", "passenger_id", "ticket", 
-            "family", "lastname", "cabin"))
+  select(-c("name", "ticket", "family", "lastname", "cabin"))
 
 # I thought of using caret but it is not possible in this situation due
 # to missing values in the test dataset
@@ -357,17 +354,40 @@ titanic = titanic %>%
 test_data = titanic[is.na(titanic$survival),]
 train_data = na.omit(titanic)
 # pull out the dependent variable
-train_df = train_data[,-1]
-test_df = test_data[,-1]
+train_df = train_data[,-c(1,2)]
+test_df = test_data[,-c(1,2)]
 ```
 
 
 
+# Model Building
 
-Next, I will optimize a randomForest and Gradient Boosting models with `survival` as the response variable against all predictors.
 
-### Random Forest Model
 
+## Logistic Model
+
+I can also fit a logistic regression using caret. This is to compare the cross-validation performance with other models, rather than tuning the model.
+
+```{r}
+# set up training control
+ctrl1 = trainControl(method = "repeatedcv", # 10 fold cross validation
+                    number = 5, # do 5 repetition of cv
+                    summaryFunction = twoClassSummary, # Use AUC to pick the best model
+                    classProbs = TRUE)
+
+set.seed(1)
+
+model.glm = train(x = train_df,
+                  y = train_data$survival,
+                  method = "glm",
+                  metric = "ROC",
+                  trControl = ctrl1)
+```
+
+
+## Random Forest Model
+
+Next, I will optimize a randomForest by tunning it first to determine the right number of trees and number of features to be selected at each split, the right combination of which will result in the highest model accuracy.
 
 ```{r}
 # set up training control
@@ -389,6 +409,9 @@ rf.fit = train(x = train_df, y = train_data$survival,
                 tuneGrid = rf.grid,
                 verbose = FALSE)
 ggplot(rf.fit, highlight = TRUE)
+
+# the besttune
+rf.fit$bestTune
 ```
 
 
@@ -415,15 +438,16 @@ barplot(sort(ranger::importance(rf_imp), decreasing = FALSE),
 
 This figure shows a graphical representation of the variable importance in the `titanic` data. We see the mean decrease in Gini index for each variable, relative to the largest. The variables with the largest mean decrease in Gini index are `titles`, `fare`, and `gender`.
 
-In this figure, the test error is displayed as a function of  the number of trees. Each colored line correspond to the error rates of `survived`, `Out-of-Bag`, and `Died` respectively.
-
 
 ## Gradient Boosting Model
 
+Finally, I will optimize a Gradient Boosting by tunning it first to determine the right number of trees, the right depth of those trees, and the right learning rate since Gradient boosting learns slowlt. The right combination of which will result in the highest model accuracy.
+
+
 ```{r}
 # Use the expand.grid to specify the search space
-grid = expand.grid(n.trees = c(2000,3000,4000), # number of trees to fit
-                        interaction.depth = 2:10, # depth of variable interaction
+grid = expand.grid(n.trees = c(4000,5000), # number of trees to fit
+                        interaction.depth = 2:8, # depth of variable interaction
                         shrinkage = c(0.001, 0.003,0.005), # try 3 values for learning rate
                         n.minobsinnode = 1)
 
@@ -441,41 +465,40 @@ summary(gbm.fit$finalModel, las = 2, cex.names = 0.6)
 gbm.fit$bestTune
 # plot the performance of the training models
 plot(gbm.fit)
-res = gbm.fit$results
-# GBM model predictions and performance byy making predictions using the test data
-gbm.pred = predict(gbm.fit, newdata = test_data, type = "prob")[,2]
-
 ```
 
 
 
-## RandomForest Vs Boosting
+## Model Selection based on Cross Validation
 
 ```{r}
-resamp = resamples(list(rf = rf.fit, gbm = gbm.fit))
-summary(resamp)
-# Visualizing RMSE
+resamp = resamples(list(logistic = model.glm, rf = rf.fit, gbm = gbm.fit))
+# Visualizing ROC
 bwplot(resamp, metric = "ROC")
 ```
 
+As shown in the boxplot, the RandomForest model is the optimal model followed by the logistic and Gradient Boosting.
+
+# Prediction
+
+```{r}
+# Predict using the test set
+rf.pred = predict(rf.fit, newdata = test_data, type = "raw")
 
 
+# Save the solution to a dataframe with two columns: PassengerId and Survived (predicted values)
+solution = data.frame(PassengerID = test_data$passenger_id, Survival = rf.pred)
 
-
-## Performance of both models on the Testing Data: Predictions
-
-
-
-
-
-
+# Write the solution to file
+write.csv(solution, file = 'rf_modelPred.csv', row.names = F)
+```
 
 
 
 
 # Conclusion
 
-In this classification problem, I deemed random forest to be the suitable tree-based methods to predict the survival fate of subjects in the test dataset. I approached this problem by conducting feature engineering to leverage original variables provided to me. I created the `titles` variable from the `name` variable, which was found to be the most important of all. This means a subject's class, whether it be their marital status or age, was a determining factor for one's survival fate. The model built has a 87% AUC, meaning that there is lower likelihood that the model will make type 1 or type 2 errors. Obviously this problem can be approcahed in different ways, different models could be used, and certainly different predictor variables could be created from the existing ones.
+In this classification problem, I optimized a RandomForest and Gradient Boosting models then compared them to a logistic model, where the RandomForest proved to be the optimal model with a 87% accuracy. I approached this problem by conducting feature engineering to leverage original variables provided to me. I created the `titles` variable from the `name` variable, which was found to be the most important of all. Obviously this problem can be approached in different ways, different models could be used, and certainly different predictor variables could be created from the existing ones.
 
 
 

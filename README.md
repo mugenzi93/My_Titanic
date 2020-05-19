@@ -397,17 +397,14 @@ sum(is.na(titanic$fare))
 After this step, the final `Titanic` dataset should be cleaned without
 missing values and necessary variables for the `Prediction` stage.
 
-# Model Building
-
-## Splitting the Dataset
+## Splitting the Dataset for model building
 
 I will split the `Titanic` dataset back to the `Train` and `Test`
 datasets.
 
 ``` r
 titanic = titanic %>%
-  select(-c("name", "passenger_id", "ticket", 
-            "family", "lastname", "cabin"))
+  select(-c("name", "ticket", "family", "lastname", "cabin"))
 
 # I thought of using caret but it is not possible in this situation due
 # to missing values in the test dataset
@@ -416,14 +413,40 @@ titanic = titanic %>%
 test_data = titanic[is.na(titanic$survival),]
 train_data = na.omit(titanic)
 # pull out the dependent variable
-train_df = train_data[,-1]
-test_df = test_data[,-1]
+train_df = train_data[,-c(1,2)]
+test_df = test_data[,-c(1,2)]
 ```
 
-Next, I will optimize a randomForest and Gradient Boosting models with
-`survival` as the response variable against all predictors.
+# Model Building
 
-### Random Forest Model
+## Logistic Model
+
+I can also fit a logistic regression using caret. This is to compare the
+cross-validation performance with other models, rather than tuning the
+model.
+
+``` r
+# set up training control
+ctrl1 = trainControl(method = "repeatedcv", # 10 fold cross validation
+                    number = 5, # do 5 repetition of cv
+                    summaryFunction = twoClassSummary, # Use AUC to pick the best model
+                    classProbs = TRUE)
+
+set.seed(1)
+
+model.glm = train(x = train_df,
+                  y = train_data$survival,
+                  method = "glm",
+                  metric = "ROC",
+                  trControl = ctrl1)
+```
+
+## Random Forest Model
+
+Next, I will optimize a randomForest by tunning it first to determine
+the right number of trees and number of features to be selected at each
+split, the right combination of which will result in the highest model
+accuracy.
 
 ``` r
 # set up training control
@@ -447,7 +470,15 @@ rf.fit = train(x = train_df, y = train_data$survival,
 ggplot(rf.fit, highlight = TRUE)
 ```
 
-<img src="README_files/figure-gfm/unnamed-chunk-21-1.png" width="90%" />
+<img src="README_files/figure-gfm/unnamed-chunk-22-1.png" width="90%" />
+
+``` r
+# the besttune
+rf.fit$bestTune
+```
+
+    ##   mtry splitrule min.node.size
+    ## 7    3      gini             1
 
 This randomForest model was tuned and optimized, resulting in the
 highest **Accuracy** of 0.8737395 over the optimization range.
@@ -462,16 +493,17 @@ in the `titanic` data. We see the mean decrease in Gini index for each
 variable, relative to the largest. The variables with the largest mean
 decrease in Gini index are `titles`, `fare`, and `gender`.
 
-In this figure, the test error is displayed as a function of the number
-of trees. Each colored line correspond to the error rates of `survived`,
-`Out-of-Bag`, and `Died` respectively.
-
 ## Gradient Boosting Model
+
+Finally, I will optimize a Gradient Boosting by tunning it first to
+determine the right number of trees, the right depth of those trees, and
+the right learning rate since Gradient boosting learns slowlt. The right
+combination of which will result in the highest model accuracy.
 
 ``` r
 # Use the expand.grid to specify the search space
-grid = expand.grid(n.trees = c(2000,3000,4000), # number of trees to fit
-                        interaction.depth = 2:10, # depth of variable interaction
+grid = expand.grid(n.trees = c(4000,5000), # number of trees to fit
+                        interaction.depth = 2:8, # depth of variable interaction
                         shrinkage = c(0.001, 0.003,0.005), # try 3 values for learning rate
                         n.minobsinnode = 1)
 
@@ -487,19 +519,19 @@ gbm.fit = train(x = train_df, y = train_data$survival,
 summary(gbm.fit$finalModel, las = 2, cex.names = 0.6)
 ```
 
-<img src="README_files/figure-gfm/unnamed-chunk-22-1.png" width="90%" />
+<img src="README_files/figure-gfm/unnamed-chunk-23-1.png" width="90%" />
 
     ##               var    rel.inf
-    ## fare         fare 26.6500327
-    ## titles     titles 25.5219802
-    ## age           age 21.7303302
-    ## pclass     pclass  9.3927246
-    ## gender     gender  5.3825671
-    ## famsize   famsize  4.4792791
-    ## embarked embarked  3.2064286
-    ## sib_sp     sib_sp  2.2961413
-    ## parch       parch  1.0278034
-    ## mother     mother  0.3127128
+    ## fare         fare 26.5616014
+    ## titles     titles 26.2109654
+    ## age           age 21.1721060
+    ## pclass     pclass  9.6887440
+    ## gender     gender  5.1036894
+    ## famsize   famsize  4.6415573
+    ## embarked embarked  3.2555406
+    ## sib_sp     sib_sp  1.9696483
+    ## parch       parch  1.0180282
+    ## mother     mother  0.3781194
 
 ``` r
 # looking at the tuning results
@@ -507,70 +539,50 @@ gbm.fit$bestTune
 ```
 
     ##    n.trees interaction.depth shrinkage n.minobsinnode
-    ## 74    3000                 8     0.005              1
+    ## 36    5000                 5     0.005              1
 
 ``` r
 # plot the performance of the training models
 plot(gbm.fit)
 ```
 
-<img src="README_files/figure-gfm/unnamed-chunk-22-2.png" width="90%" />
+<img src="README_files/figure-gfm/unnamed-chunk-23-2.png" width="90%" />
+
+## Model Selection based on Cross Validation
 
 ``` r
-res = gbm.fit$results
-# GBM model predictions and performance byy making predictions using the test data
-gbm.pred = predict(gbm.fit, newdata = test_data, type = "prob")[,2]
-```
-
-## RandomForest Vs Boosting
-
-``` r
-resamp = resamples(list(rf = rf.fit, gbm = gbm.fit))
-summary(resamp)
-```
-
-    ## 
-    ## Call:
-    ## summary.resamples(object = resamp)
-    ## 
-    ## Models: rf, gbm 
-    ## Number of resamples: 5 
-    ## 
-    ## ROC 
-    ##          Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
-    ## rf  0.8361441 0.8639657 0.8895916 0.8751462 0.8899733 0.8960561    0
-    ## gbm 0.5074198 0.5548748 0.5911726 0.5809728 0.6197861 0.6316109    0
-    ## 
-    ## Sens 
-    ##          Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
-    ## rf  0.8727273 0.8899083 0.9000000 0.8997998 0.9181818 0.9181818    0
-    ## gbm 0.1000000 0.1363636 0.1363636 0.1567640 0.1909091 0.2201835    0
-    ## 
-    ## Spec 
-    ##          Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
-    ## rf  0.6811594 0.7058824 0.7101449 0.7312020 0.7647059 0.7941176    0
-    ## gbm 0.8115942 0.8235294 0.8550725 0.8509804 0.8676471 0.8970588    0
-
-``` r
-# Visualizing RMSE
+resamp = resamples(list(logistic = model.glm, rf = rf.fit, gbm = gbm.fit))
+# Visualizing ROC
 bwplot(resamp, metric = "ROC")
 ```
 
-<img src="README_files/figure-gfm/unnamed-chunk-23-1.png" width="90%" />
+<img src="README_files/figure-gfm/unnamed-chunk-24-1.png" width="90%" />
 
-## Performance of both models on the Testing Data: Predictions
+As shown in the boxplot, the RandomForest model is the optimal model
+followed by the logistic and Gradient Boosting.
+
+# Prediction
+
+``` r
+# Predict using the test set
+rf.pred = predict(rf.fit, newdata = test_data, type = "raw")
+
+
+# Save the solution to a dataframe with two columns: PassengerId and Survived (predicted values)
+solution = data.frame(PassengerID = test_data$passenger_id, Survival = rf.pred)
+
+# Write the solution to file
+write.csv(solution, file = 'rf_modelPred.csv', row.names = F)
+```
 
 # Conclusion
 
-In this classification problem, I deemed random forest to be the
-suitable tree-based methods to predict the survival fate of subjects in
-the test dataset. I approached this problem by conducting feature
-engineering to leverage original variables provided to me. I created the
-`titles` variable from the `name` variable, which was found to be the
-most important of all. This means a subject’s class, whether it be their
-marital status or age, was a determining factor for one’s survival fate.
-The model built has a 87% AUC, meaning that there is lower likelihood
-that the model will make type 1 or type 2 errors. Obviously this problem
-can be approcahed in different ways, different models could be used, and
-certainly different predictor variables could be created from the
-existing ones.
+In this classification problem, I optimized a RandomForest and Gradient
+Boosting models then compared them to a logistic model, where the
+RandomForest proved to be the optimal model with a 87% accuracy. I
+approached this problem by conducting feature engineering to leverage
+original variables provided to me. I created the `titles` variable from
+the `name` variable, which was found to be the most important of all.
+Obviously this problem can be approached in different ways, different
+models could be used, and certainly different predictor variables could
+be created from the existing ones.
